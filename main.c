@@ -10,9 +10,7 @@
 #include <semaphore.h>
 
 //vehicles type
-#define CAR 0
-#define MOTORCYCLE 1
-#define TRUCK 2
+enum VEHICLES{CAR, MOTORCYCLE, TRUCK};
 
 //Highway lanes
 #define L 4
@@ -22,8 +20,11 @@
 //dove ogni veicolo occupa n caselle
 #define ROAD_LENGHT 1000
 
+//Movements
+enum MOVEMENTS{GO_AHEAD, OVERTAKE, TURN_RIGHT};
+
 //vehicles quantity... da cambiare e rendere dinamico
-static int n_vehicles;
+int n_vehicles;
 
 struct vehicle_t
 {
@@ -34,6 +35,7 @@ struct vehicle_t
     int can_overtake;
     int lane;
     int position;
+    int blocked;
 };
 
 /* struttura condivisa */
@@ -42,7 +44,7 @@ struct highway_t
     //array containing all the vehicles
     vehicle_t *vehicles;
 
-    pthread_mutex_t m;
+    pthread_mutex_t mutex;
     pthread_cond_t *priv_Vehicle;
     pthread_cond_t priv_Lane[L];//forse non serve
 
@@ -63,21 +65,23 @@ struct highway_t
 
 } highway;
 
-vehicle_t createVehicle(int *type, int *max_speed)
+vehicle_t createVehicle(VEHICLES *type, int *max_speed)
 {
     vehicle_t vehicle;
     vehicle.type = type;
     vehicle.actual_speed = 0;
+    vehicle.blocked = 0;
     vehicle.max_speed = max_speed;
     vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
     vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
 }
 
-vehicle_t createMockedVehicle(int *type)
+vehicle_t createMockedVehicle(VEHICLES *type)
 {
     vehicle_t vehicle;
     vehicle.type = type;
     vehicle.actual_speed = 0;
+    vehicle.blocked = 0;
     vehicle.max_speed = (type == TRUCK) ? 80 : 130;
     vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
     vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
@@ -91,7 +95,7 @@ void initHighway(struct highway_t *h)
 
     pthread_mutexattr_init(&m_attr);
     pthread_condattr_init(&c_attr);
-    pthread_mutex_init(&h->m, &m_attr);
+    pthread_mutex_init(&h->mutex, &m_attr);
 
     for(i=0; i<L; i++)
     {
@@ -117,7 +121,7 @@ void initHighway(struct highway_t *h)
         {
             for(l=0; l<ROAD_LENGHT; l++)
             {
-                road[i][k][l] = 0; //or NULL?
+                road[i][k][l] = NULL; //or -1?
             }
         }
 
@@ -128,6 +132,26 @@ void initHighway(struct highway_t *h)
     pthread_condattr_destroy(&c_attr);
     pthread_mutexattr_destroy(&m_attr);
 
+}
+
+//--- Utility functions ---//
+void position_switch(int vehicle_id)
+{
+    int pos_vehicle, new_pos_vehicle, lane_vehicle, *actual_speed;
+    pos_vehicle = &highway->vehicles[vehicle_id].position;
+    lane_vehicle = &highway->vehicles[vehicle_id].lane;
+
+    new_pos_vehicle = (actual_speed > 40) ? pos_vehicle+2 : pos_vehicle+1;
+    new_pos_vehicle = (actual_speed > 80) ? new_pos_vehicle+1 : new_pos_vehicle;
+
+    &highway->road[lane_vehicle][pos_vehicle] = NULL;
+    &highway->road[lane_vehicle][new_pos_vehicle] = vehicle_id;
+
+    if(&highway->vehicles[vehicle_id].type == TRUCK)
+    {
+        &highway->road[lane_vehicle][pos_vehicle+1] = NULL;
+        &highway->road[lane_vehicle][new_pos_vehicle+1] = vehicle_id;
+    }
 }
 
 /* 4 types of THREADS:
@@ -145,14 +169,62 @@ void initHighway(struct highway_t *h)
  *      lane_detection()
 */
 
-
-void go(int vehicle_id, struct highway_t *h)
+/* Behaviour
+ * 1) Increase speed if necessary
+ * 2) Change the vehicle's position in the matrix rappresenting the road
+ */
+void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 {
+    //int pos_vehicle, new_pos_vehicle, lane_vehicle, *actual_speed;
+    pthread_mutex_lock(&h->mutex);
 
+    //actual_speed = &h->vehicles[vehicle_id].actual_speed; //to be tested
+    if(!(&h->vehicles[vehicle_id].blocked) && &h->vehicles[vehicle_id].actual_speed < &h->vehicles[vehicle_id].max_speed)
+    {
+        &h->vehicles[vehicle_id].actual_speed = &h->vehicles[vehicle_id].actual_speed + 10;
+    }
+
+    /*
+    //---POSITION SWITCH---// should be putted in a function
+    pos_vehicle = &h->vehicles[vehicle_id].position;
+    lane_vehicle = &h->vehicles[vehicle_id].lane;
+
+    new_pos_vehicle = (actual_speed > 40) ? pos_vehicle+2 : pos_vehicle+1;
+    new_pos_vehicle = (actual_speed > 80) ? new_pos_vehicle+1 : new_pos_vehicle;
+
+    &h->road[lane_vehicle][pos_vehicle] = NULL;
+    &h->road[lane_vehicle][new_pos_vehicle] = vehicle_id;
+
+    if(&h->vehicles[vehicle_id].type == TRUCK)
+    {
+        &h->road[lane_vehicle][pos_vehicle+1] = NULL;
+        &h->road[lane_vehicle][new_pos_vehicle+1] = vehicle_id;
+    }
+    //--------------------//
+    */
+
+    //---POSITION SWITCH---//
+    position_switch(vehicle_id);
+
+    graphic_update(vehicle_id, &h, GO_AHEAD);
+
+    pthread_mutex_unlock(&h->mutex);
 }
 
 
 void check_front_distance(int vehicle_id, struct highway_t *h)
+{
+    pthread_mutex_lock(&h->mutex);
+
+
+
+    graphic_update(vehicle_id, &h, GO_AHEAD);
+
+    pthread_mutex_unlock(&h->mutex);
+
+}
+
+void graphic_update(int vehicle_id, struct highway_t *h, MOVEMENTS movement)
 {
 
 }
@@ -178,7 +250,7 @@ void mydebugprint()
 
 void *go_routine(int id)
 {
-    //Initialize lane and position, that the go function will change
+    //Initialize lane and position, which will be changed by the go function
     &highway.vehicles[id].lane = 0;
     &highway.vehicles[id].position = 0;
 
@@ -212,7 +284,8 @@ int main(int argc, char **argv)
 {
   pthread_attr_t a;
   pthread_t p;
-  int i,temp_type;
+  int i;
+  VEHICLES temp_type;
 
   /* inizializzo i numeri casuali, usati nella funzione pausetta */
   srand(555);

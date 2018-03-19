@@ -48,7 +48,7 @@ struct vehicle_t
     int min_security_distance;
     int can_overtake;
     struct position_t position;
-    int speed_blocked;
+    int speed_limited;
 };
 
 /* struttura condivisa */
@@ -89,7 +89,7 @@ struct vehicle_t createVehicle(int type, int *max_speed)
     struct vehicle_t vehicle;
     vehicle.type = type;
     vehicle.actual_speed = 0;
-    vehicle.speed_blocked = 0;
+    vehicle.speed_limited = 0;
     vehicle.max_speed = &max_speed;
     vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
     vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
@@ -97,13 +97,14 @@ struct vehicle_t createVehicle(int type, int *max_speed)
     return vehicle;
 }
 
-struct vehicle_t createMockedVehicle(int type, int id)
+struct vehicle_t createMockedVehicle(int type, int id, int max_speed)
 {
     struct vehicle_t vehicle;
     vehicle.type = type;
     vehicle.actual_speed = 0;
-    vehicle.speed_blocked = 0;
-    vehicle.max_speed = (type == TRUCK) ? 80 : 130;
+    vehicle.speed_limited = 0;
+    //vehicle.max_speed = (type == TRUCK) ? 80 : 130;
+    vehicle.max_speed = max_speed;
     vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
     vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
     //Initialize lane and position, which will be changed by the go function
@@ -117,7 +118,7 @@ void initHighway(struct highway_t *h)
     int i,j,k,l;
     pthread_mutexattr_t m_attr;
     pthread_condattr_t c_attr;
-    int temp_type;
+    int max_speed, temp_type;
 
     pthread_mutexattr_init(&m_attr);
     pthread_condattr_init(&c_attr);
@@ -142,17 +143,21 @@ void initHighway(struct highway_t *h)
         if(i<3)
         {
             temp_type = TRUCK;
+            max_speed = 60;
         }
         else if(i<6)
         {
-            temp_type = CAR;
+            temp_type = MOTORCYCLE;
+            max_speed = 80;
         }
         else
         {
-            temp_type = MOTORCYCLE;
+            temp_type = CAR;
+            max_speed = 130;
         }
 
-        h->vehicles[i] = createMockedVehicle(temp_type,i);
+        h->vehicles[i] = createMockedVehicle(temp_type,i,max_speed);
+
         //Initialize lane and position, which will be changed by the go function
         h->vehicles[i].position.lane = 0;
         h->vehicles[i].position.x_pos = 0;
@@ -173,16 +178,7 @@ void initHighway(struct highway_t *h)
         //Init queue and iterator
         for(j=0; j<n_vehicles; j++)
         {
-            h->coda_road[i][j] = 0; //or NULL?
-
-            //Init private semaphore for each veichle
-            /*if(!i)
-            {
-                pthread_cond_init(&h->priv_Vehicle[j], &c_attr);
-                h->next[j] = j+1;
-                h->coda_to_start[j] = NULL;
-            }*/
-
+            h->coda_road[i][j] = -1;
         }
 
         //Init highway 'status' for each portion of the road
@@ -190,7 +186,7 @@ void initHighway(struct highway_t *h)
         {
             for(l=0; l<ROAD_LENGHT; l++)
             {
-                h->road[i][k][l] = -1; //or -1?
+                h->road[i][k][l] = -1;
             }
         }
 
@@ -217,13 +213,13 @@ void position_switch(int vehicle_id, struct highway_t *h)
     actual_speed = h->vehicles[vehicle_id].actual_speed;
 
     new_y_pos = (actual_speed > 40) ? y_pos+2 : y_pos+1; //0
-    new_y_pos = (actual_speed > 80) ? new_y_pos+1 : new_y_pos;
+    new_y_pos = (actual_speed > 80) ? new_y_pos+2 : new_y_pos;
 
     if(y_pos != -1)
     {
         h->road[lane_vehicle][x_pos][y_pos] = -1;
-        h->road[lane_vehicle][x_pos][new_y_pos] = vehicle_id;
     }
+    h->road[lane_vehicle][x_pos][new_y_pos] = vehicle_id;
 
     if(&h->vehicles[vehicle_id].type == TRUCK)
     {
@@ -233,6 +229,29 @@ void position_switch(int vehicle_id, struct highway_t *h)
     }
 
     h->vehicles[vehicle_id].position.y_pos = new_y_pos;
+}
+
+//Check if a vehicle can start the travel. This is possible when first 3 slots are free
+int check_start(int vehicle_id, int y_pos, struct highway_t *h)
+{
+    int i, index_to_check;
+    int can_start = 1;
+    printf("Veicolo %d: controllo se posso partire o meno \n", vehicle_id, y_pos);
+    for(i=1; i <= h->vehicles[vehicle_id].min_security_distance+3; i++)
+    {
+        index_to_check = y_pos+i;
+        if(h->road[0][0][index_to_check] != -1)
+        {
+            can_start = 0;
+            printf("In posizione %d c'è già %d \n", index_to_check, h->road[0][0][index_to_check]);
+            break; //maybe not safety for RT
+        }
+        else
+        {
+            printf("Non c'è nessuno in posizione %d, infatti: %d \n", index_to_check, h->road[0][0][index_to_check]);
+        }
+    }
+    return can_start;
 }
 
 /* 4 types of THREADS:
@@ -256,11 +275,10 @@ void position_switch(int vehicle_id, struct highway_t *h)
  */
 void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 {
-    int can_go = 1;
-    int i, lane_vehicle, x_pos, y_pos;
+    int can_start = 1;
+    int lane_vehicle, x_pos, y_pos, to_awake;
     struct position_t pos_vehicle;
 
-    //int pos_vehicle, new_y_pos, lane_vehicle, *actual_speed;
     pthread_mutex_lock(&h->mutex);
 
     pos_vehicle = h->vehicles[vehicle_id].position;
@@ -270,17 +288,12 @@ void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 
     printf("Veicolo %d: sono a pos: %d \n", vehicle_id, y_pos);
 
-    for(i=1; i <= h->vehicles[vehicle_id].min_security_distance; i++)
+    if(y_pos < 5)
     {
-        if(h->road[lane_vehicle][x_pos][y_pos+i] != -1)
-        {
-            can_go = 0;
-        }
+        can_start = check_start(vehicle_id, y_pos, h);
     }
-//!can_go || (y_pos == 0 &&
-    //I'll block if there is another vehicle waiting to start or if next
-   // while(h->waiting_to_start)
-    while(!can_go)
+
+    while(!can_start)
     {
         printf("Veicolo %d: sono BLOCCATO, devo aspettare...\n", vehicle_id);
 
@@ -291,21 +304,16 @@ void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 
         pthread_cond_wait(&h->priv_Vehicle[vehicle_id], &h->mutex);
 
-        can_go = 1;
-
-        //OCCHIO
-        for(i=1; i <= h->vehicles[vehicle_id].min_security_distance; i++)//ripetuto... da cambiare
+        can_start = 1;
+        if(y_pos < 5)
         {
-            if(h->road[lane_vehicle][x_pos][y_pos+i] != -1)
-            {
-                can_go = 0;
-            }
+            can_start = check_start(vehicle_id, y_pos, h);
         }
     }
 
-    printf("Veicolo %d: ora posso andare avanti\n", vehicle_id);
+    printf("Veicolo %d: vado avanti\n", vehicle_id);
 
-    if(!(h->vehicles[vehicle_id].speed_blocked) && h->vehicles[vehicle_id].actual_speed < h->vehicles[vehicle_id].max_speed)
+    if(!(h->vehicles[vehicle_id].speed_limited) && h->vehicles[vehicle_id].actual_speed < h->vehicles[vehicle_id].max_speed)
     {
         h->vehicles[vehicle_id].actual_speed = h->vehicles[vehicle_id].actual_speed + 10;
     }
@@ -319,7 +327,9 @@ void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
     {
         //update variables concerning the waiting and then signal the next vehicle in the waiting queue
         h->waiting_to_start--;
-        pthread_cond_signal(&h->priv_Vehicle[h->next_vehicle]);
+        to_awake = h->coda_to_start[h->next_vehicle];
+        printf("Veicolo %d: cerco di svegliare il veicolo %d\n", vehicle_id, to_awake);
+        pthread_cond_signal(&h->priv_Vehicle[to_awake]);
         h->next_vehicle = h->next[h->next_vehicle];
     }
 
@@ -342,7 +352,8 @@ void graphic_update(int vehicle_id, struct highway_t *h, int movement)
     struct position_t pos_vehicle;
     pos_vehicle = h->vehicles[vehicle_id].position;
 
-    printf("Movimento veicolo %d a posizione: (%d, %d) corsia %d\n", vehicle_id, pos_vehicle.x_pos, pos_vehicle.y_pos, pos_vehicle.lane);
+    printf("Movimento veicolo %d a posizione: (%d, %d) corsia %d, a velocità: %d\n",
+           vehicle_id, pos_vehicle.x_pos, pos_vehicle.y_pos, pos_vehicle.lane, h->vehicles[vehicle_id].actual_speed);
 }
 
 

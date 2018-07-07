@@ -1,0 +1,4 @@
+#ifndef HIGHWAY_MANAGER_H
+#define HIGHWAY_MANAGER_H
+
+#endif // HIGHWAY_MANAGER_H

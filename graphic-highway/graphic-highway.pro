@@ -11,11 +11,20 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = graphic-highway
 TEMPLATE = app
 
-SOURCES += main.cpp\
-        Graphics\mainwindow.cpp \
+SOURCES +=\
     #../main.c
-    Graphics/mainwindow.cpp
+    vehicle.cpp \
+    highway.cpp \
+    Graphics/highway_gui.cpp \
+    Graphics/button.cpp \
+    threads_controller.cpp \
+    main.cpp
 
 LIBS += -lpthread
 
-HEADERS  += mainwindow.h
+HEADERS  += \
+    vehicle.h \
+    highway.h \
+    Graphics/highway_gui.h \
+    Graphics/button.h \
+    threads_controller.h

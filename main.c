@@ -84,13 +84,13 @@ struct highway_t
 
 } highway;
 
-struct vehicle_t createVehicle(int type, int *max_speed)
+struct vehicle_t createVehicle(int type, int max_speed)
 {
     struct vehicle_t vehicle;
     vehicle.type = type;
     vehicle.actual_speed = 0;
     vehicle.speed_limited = 0;
-    vehicle.max_speed = &max_speed;
+    vehicle.max_speed = max_speed;
     vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
     vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
 

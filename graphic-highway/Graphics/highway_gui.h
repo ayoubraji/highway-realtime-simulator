@@ -12,7 +12,7 @@
 class HighwayGui: public QGraphicsView{
 	Q_OBJECT
 public:
-
+	//SINGLETON
 	static HighwayGui& getInstance() {
 
 		static HighwayGui highway_gui;
@@ -23,19 +23,15 @@ public:
 	void displayMainMenu();
 	void initScene();
 
-	//QVector<QPixmap*> vehicles;
 	QVector<QGraphicsPixmapItem*> vehicles;
-	//QVector<QGraphicsRectItem*> vehicles;
 
 	QScrollArea* scrollAreaCandidate ;
 
 	// public attributes
 	QGraphicsScene* scene;
-	//MyScene* scene;
 	QScrollBar *scroll;
 
 	bool started;
-	//static bool first = false;
 private:
 	void vehicleStart(int vehicle_id);
 

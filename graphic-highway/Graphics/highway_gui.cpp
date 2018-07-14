@@ -14,11 +14,6 @@ void HighwayGui::start(){
 
 	for(int i=0; i<50; i++ )
 	{
-		/*QGraphicsRectItem *vehicle = new QGraphicsRectItem();
-		QBrush brush;
-		vehicle->setBrush(Qt::blue);
-		vehicles.push_back(vehicle);*/
-		//vehicles.push_back(new QGraphicsRectItem());
 		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
 
 		QImage image;
@@ -26,26 +21,18 @@ void HighwayGui::start(){
 		if(i<15)
 		{
 			image = QImage(":/images/img/truck.png");
-			//pixmap = new QPixmap(":/images/img/truck.png");
-			//pixmap->setPixmap(QPixmap(":/images/img/truck.png"));
 		}
 		else if(i<25)
 		{
 			image = QImage(":/images/img/motorcycle.png");
-			//pixmap = new QPixmap(":/images/img/motorcycle.png");
-			//pixmap->setPixmap(QPixmap(":/images/img/motorcycle.png"));
 		}
 		else if(i == 40)
 		{
 			image = QImage(":/images/img/car_blue.png");
-			//pixmap = new QPixmap(":/images/img/car_blue.png");
-			//pixmap->setPixmap(QPixmap(":/images/img/car_blue.png"));
 		}
 		else
 		{
 			image = QImage(":/images/img/car.png");
-			//pixmap = new QPixmap(":/images/img/car.png");
-			//pixmap->setPixmap(QPixmap(":/images/img/car.png"));
 		}
 
 		QPainter p(&image);
@@ -54,12 +41,7 @@ void HighwayGui::start(){
 		p.setPen(QPen(Qt::red));
 		p.setFont(QFont("Times", 12, QFont::Bold));
 		p.drawText(image.rect(), Qt::AlignCenter,QString::number(i));
-		//pix->setPixmap(QPixmap::fromImage(image));
 		pixmap->setPixmap(QPixmap::fromImage(image));
-
-		//QPainter painter = new QPainter(&pixmap);
-		//painter.setFont( QFont("Arial") );
-		//painter.drawText( QPoint(50, 50), i );
 
 		vehicles.push_back(pixmap);
 	}
@@ -74,25 +56,17 @@ void HighwayGui::start(){
 void HighwayGui::initScene()
 {
 	// set up the screen
-	//setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	//setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-	//setFixedSize(1024,768);
-	//setFixedSize(1200,1080);
 	setFixedSize(1200,1000);
 
 	// set up the scene
 	scene = new QGraphicsScene();
-	//scene = new MyScene(new QScrollBar(),this);
-	//scene->scroll = new QScrollBar();
 
-	//scene->setSceneRect(0,0,1024,768);
-	//scene->setSceneRect(0,0,1200,1000);
 	scene->setSceneRect(0,0,1200,500000);
 
 	setScene(scene);
-
-	//centerOn(scene->width(),scene->height());
 
 	started = false;
 
@@ -101,7 +75,6 @@ void HighwayGui::initScene()
 
 void HighwayGui::vehicleStart(int vehicle_id)
 {
-	//vehicles[vehicle_id]->setRect(0, 0, 100, 100);
 	vehicles[vehicle_id]->setPos(scene->width()-350, scene->height());
 
 	scene->addItem(vehicles[vehicle_id]);
@@ -138,7 +111,7 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 			break;
 		}
 
-		y = scene->height()-(y_pos*100);
+		y = scene->height()-(y_pos*30);
 
 		vehicles[vehicle_id]->setPos(x, y);
 
@@ -150,16 +123,12 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 		//Adjust the scrollbar if the followed vehicle is near to pass the view zone
 		int diff = this->verticalScrollBar()->value() - vehicles[40]->pos().y();
 
-			if(diff > 700)
+			if(diff > 200)
 			{
 				printf("diff: %d\n",diff);
-				//this->verticalScrollBar()->setSliderPosition(this->verticalScrollBar()->value() - 1000);
-				this->verticalScrollBar()->setValue(this->verticalScrollBar()->value() - 2000);
+				this->verticalScrollBar()->setValue(this->verticalScrollBar()->value() - 1300);
 			}
 	}
-
-
-
 
 }
 
@@ -223,13 +192,6 @@ void HighwayGui::drawLine(int x, int y, int width, Qt::GlobalColor color, Qt::Pe
 
 void HighwayGui::drawGUI(){
 
-	//scroll until the starting position
-	//scroll(0,50000);
-
-	//scene->setSceneRect(0,0,1200,500000);
-
-	//first setting of scrollbar
-	//scroll(500,100000);
 
 	// draw the left panel
 	drawPanel(0,0,200,scene->height(),Qt::green,Qt::SolidPattern,1);

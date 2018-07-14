@@ -1,5 +1,6 @@
 #include "vehicle.h"
 #include <iostream>
+
 struct vehicle_t createVehicle(int type, int max_speed)
 {
 	struct vehicle_t vehicle;
@@ -9,24 +10,12 @@ struct vehicle_t createVehicle(int type, int max_speed)
 	vehicle.max_speed = max_speed;
 	vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
 	vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
-
-	return vehicle;
-}
-
-struct vehicle_t createMockedVehicle(int type, int id, int max_speed)
-{
-	struct vehicle_t vehicle;
-	vehicle.type = type;
-	vehicle.actual_speed = 0;
-	vehicle.speed_limited = 0;
-	//vehicle.max_speed = (type == TRUCK) ? 80 : 130;
-	vehicle.max_speed = max_speed;
-	vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
-	vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
 	vehicle.movement_type = GO_AHEAD;
 
 	//Initialize lane and position, which will be changed by the go function
-	//highway.vehicles[id].position.lane = highway.vehicles[id].position.x_pos = highway.vehicles[id].position.y_pos = 0;
+	vehicle.position.lane = 0;
+	vehicle.position.x_pos = 0;
+	vehicle.position.y_pos = -1;
 
 	return vehicle;
 }
@@ -43,10 +32,9 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 
 	actual_speed = h->vehicles[vehicle_id].actual_speed;
 
-	new_y_pos = (actual_speed > 40) ? y_pos+2 : y_pos+1; //0
+	new_y_pos = (actual_speed > 60) ? y_pos+2 : y_pos+1; //0
 	new_y_pos = (actual_speed > 80) ? new_y_pos+1 : new_y_pos;
-	new_y_pos = (actual_speed > 120) ? new_y_pos+2 : new_y_pos;
-	new_y_pos = (lane_vehicle != lane) ? new_y_pos+1 : new_y_pos; //when we are changing the lane
+	new_y_pos = (actual_speed > 120) ? new_y_pos+1 : new_y_pos;
 
 	if(y_pos != -1)//if the vehicle is already on the road, it is necessary to set the previous position as free (-1)
 	{
@@ -67,8 +55,6 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 		   h->vehicles[vehicle_id].position.lane, h->vehicles[vehicle_id].actual_speed);
 }
 
-//int check_nearby(int vehicle_id, struct highway_t *h, )
-
 //Check if there is a vehicle in front on a specific lane, and return its id
 int check_front(int vehicle_id, struct highway_t *h, int lane_to_check, bool for_the_start)
 {
@@ -80,16 +66,15 @@ int check_front(int vehicle_id, struct highway_t *h, int lane_to_check, bool for
 	//x_pos = pos_vehicle.x_pos;
 	x_pos = 0; //should be managed...
 	y_pos = pos_vehicle.y_pos; //-1
+	lane_vehicle = pos_vehicle.lane;
 
-	//distance_to_check = (for_the_start) ? h->vehicles[vehicle_id].min_security_distance+3 : h->vehicles[vehicle_id].min_security_distance+1;
+	distance_to_check = h->vehicles[vehicle_id].min_security_distance+12;
 
-	//distance_to_check = h->vehicles[vehicle_id].min_security_distance+3;
-	distance_to_check = h->vehicles[vehicle_id].min_security_distance+4;
-
-	for(i=1; i <= distance_to_check; i++)
+	//If I'm checking the right lane, I should consider also the possible vehicles behind me
+	i = (lane_to_check < lane_vehicle) ? -2 : 1;
+	for(i; i <= distance_to_check; i++)
 	{
 		index_to_check = y_pos+i;
-		//if(h->road[0][0][index_to_check] != -1) //It doesn't work in cpp but in c it does... WHY???
 		if(h->road[lane_to_check][x_pos][index_to_check] != -1 && h->road[lane_to_check][x_pos][index_to_check] != vehicle_id)
 		{
 			front_vehicle_id = h->road[lane_to_check][x_pos][index_to_check];

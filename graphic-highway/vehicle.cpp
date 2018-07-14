@@ -14,21 +14,47 @@ struct vehicle_t createVehicle(int type, int max_speed)
 
 	//Initialize lane and position, which will be changed by the go function
 	vehicle.position.lane = 0;
+	//0 is the center of the lane, -1 left, 1 right, -2 or 2 lane overpassed (so the system failed)
 	vehicle.position.x_pos = 0;
 	vehicle.position.y_pos = -1;
+
+	vehicle.should_correct_alignment = false;
 
 	return vehicle;
 }
 
 void position_switch(int vehicle_id, struct highway_t *h, int lane)
 {
-	int lane_vehicle, x_pos, y_pos, new_y_pos, actual_speed;
+	int lane_vehicle, x_pos, y_pos, new_y_pos, actual_speed, random_int;
 	struct position_t pos_vehicle;
 
 	pos_vehicle = h->vehicles[vehicle_id].position;
 	lane_vehicle = pos_vehicle.lane;
 	x_pos = pos_vehicle.x_pos;
-	y_pos = pos_vehicle.y_pos; //-1
+	y_pos = pos_vehicle.y_pos; //-1 initially
+
+	//random between 1 and 10
+	random_int = rand() % 10 + 1;
+	if(random_int < 8)
+	{
+		switch(pos_vehicle.x_pos)
+		{
+		case -1:
+			x_pos = x_pos -1;
+			break;
+		case 1:
+			x_pos = xpos + 1;
+			break;
+		case 0:
+			x_pos = (random_int > 4) ? -1 : 1;
+		}
+	}
+
+	if(h->vehicles[vehicle_id].should_correct_alignment)
+	{
+		x_pos = 0;
+		h->vehicles[vehicle_id].should_correct_alignment = false;
+	}
 
 	actual_speed = h->vehicles[vehicle_id].actual_speed;
 
@@ -50,7 +76,7 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 
 	h->vehicles[vehicle_id].position.lane = lane;
 	h->vehicles[vehicle_id].position.y_pos = new_y_pos;
-	printf("PS Movimento veicolo %d a posizione: (%d, %d) corsia %d, a velocità: %d\n",
+	printf("PS Movimento veicolo %d nella posizione: (%d, %d) corsia %d, a velocità: %d\n",
 		   vehicle_id, pos_vehicle.x_pos, h->vehicles[vehicle_id].position.y_pos,
 		   h->vehicles[vehicle_id].position.lane, h->vehicles[vehicle_id].actual_speed);
 }

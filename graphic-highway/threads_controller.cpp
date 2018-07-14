@@ -213,6 +213,29 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
 	pthread_mutex_unlock(&h->mutex);
 }
 
+void lane_detection(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
+{
+	int lane_vehicle, x_pos, y_pos;
+	struct position_t pos_vehicle;
+
+	pthread_mutex_lock(&h->mutex);
+
+	pos_vehicle = h->vehicles[vehicle_id].position;
+	lane_vehicle = pos_vehicle.lane;
+
+	//0 is the center of the lane, -1 left, 1 right
+	x_pos = pos_vehicle.x_pos;
+	y_pos = pos_vehicle.y_pos;
+
+	//if x_pos is -1 or 1, so not in the middle of the lane, the position should be corrected
+	if(x_pos != 0)
+	{
+		h->vehicles[vehicle_id].should_correct_alignment = true;
+	}
+
+	pthread_mutex_unlock(&h->mutex);
+}
+
 void pausetta(int msec)
 {
   struct timespec t;
@@ -261,12 +284,14 @@ void *check_front_distance_routine(void *id)
 
 }
 
-void *lane_detection_routine(int id)
+void *lane_detection_routine(void id)
 {
+	long vehicle_id = (long) id;
 	//starting the routine
 	for (;;) {
-		//lane_detection(&id,&highway);
-		pausetta(3);
+		printf("Vehicle %d: lane detection routine\n", vehicle_id);
+		lane_detection(vehicle_id,&highway);
+		pausetta(150);
 	}
 }
 

@@ -26,12 +26,11 @@ struct vehicle_t
 	struct position_t position;
 	int speed_limited;
 	int movement_type;
+	bool should_correct_alignment;
 };
 
 //methods definition
 struct vehicle_t createVehicle(int type, int max_speed);
-
-struct vehicle_t createMockedVehicle(int type, int id, int max_speed);
 
 void position_switch(int vehicle_id, struct highway_t *h, int lane);
 

@@ -49,7 +49,8 @@ struct highway_t
 
     //numeber of waiting vehicles
 	int waiting_to_start, next_vehicle, next_to_start, next_vehicle_to_go, index_coda;
-	int next_pre_starting = -1;
+	//int next_pre_starting = -1;
+	int next_pre_starting = 0;
 
     //queue of blocked vechicles
     int *coda_road[LANES]; //for each lane L, it tells if the N vehicle is blocking someone /and how many vehicles\(not necessary this last thing)

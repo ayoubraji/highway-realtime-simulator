@@ -35,10 +35,99 @@ struct highway_t highway;
  * 1) Increase speed if necessary
  * 2) Change the vehicle's position in the matrix rappresenting the road
  */
+
+void go_refactor(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
+{
+	int can_start = -1;
+	int lane_vehicle, lane_to_switch, x_pos, y_pos;
+	struct position_t pos_vehicle;
+
+	pthread_mutex_lock(&h->mutex);
+
+	pos_vehicle = h->vehicles[vehicle_id].position;
+	lane_vehicle = pos_vehicle.lane;
+	x_pos = pos_vehicle.x_pos;
+	y_pos = pos_vehicle.y_pos;
+
+	printf("Veicolo %d: sono in pos: %d \n", vehicle_id, y_pos);
+
+	while(vehicle_id != h->next_pre_starting)
+	{
+		pthread_cond_signal(&h->priv_Vehicle[h->next_pre_starting]);//FORSE TROPPO FORZATO COSI...
+
+		pthread_cond_wait(&h->priv_Vehicle[vehicle_id], &h->mutex);
+	}
+
+	//h->next_pre_starting = -1;
+
+	if(!h->highway_start)
+	{
+		h->highway_start = true;
+	}
+
+	if(y_pos < 5)//Check that should be done for the first portion of road
+	{
+		can_start = check_front(vehicle_id, h, lane_vehicle, true);
+
+		while(can_start != -1)
+		{
+			printf("Veicolo %d: sono BLOCCATO per la partenza, devo aspettare...\n", vehicle_id);
+
+			//update variables concerning the waiting
+			h->waiting_to_start++;
+
+			h->next_pre_starting = 0;
+			printf("Veicolo %d: cerco di far partire il veicolo %d\n", vehicle_id, h->next_pre_starting);
+			pthread_cond_signal(&h->priv_Vehicle[h->next_pre_starting]);
+
+			pthread_cond_wait(&h->priv_Vehicle[vehicle_id], &h->mutex);
+
+			h->waiting_to_start--;
+
+			can_start = check_front(vehicle_id, h, lane_vehicle, true);
+		}
+	}
+
+	printf("Veicolo %d: vado avanti\n", vehicle_id);
+
+	if(!(h->vehicles[vehicle_id].speed_limited) && h->vehicles[vehicle_id].actual_speed < h->vehicles[vehicle_id].max_speed)
+	{
+		h->vehicles[vehicle_id].actual_speed = h->vehicles[vehicle_id].actual_speed + 10;
+	}
+
+	//---POSITION SWITCH---//
+
+	if(h->vehicles[vehicle_id].movement_type == TURN_RIGHT)
+	{
+		lane_to_switch = lane_vehicle - 1;
+	}
+	else if(h->vehicles[vehicle_id].movement_type == OVERTAKE)
+	{
+		lane_to_switch = lane_vehicle + 1;
+	}
+	else
+	{
+		lane_to_switch = lane_vehicle;
+	}
+
+	position_switch(vehicle_id, h, lane_to_switch);
+
+	graphic_update(vehicle_id, h, h->vehicles[vehicle_id].movement_type);
+	h->vehicles[vehicle_id].movement_type = GO_AHEAD;
+
+
+	h->next_pre_starting = h->next[vehicle_id];
+	printf("Veicolo %d: cerco di far partire il veicolo %d\n", vehicle_id, h->next_pre_starting);
+	pthread_cond_signal(&h->priv_Vehicle[h->next_pre_starting]);
+
+	pthread_mutex_unlock(&h->mutex);
+}
+
 void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 {
 	int can_start = -1;
 	int lane_vehicle, x_pos, y_pos, to_awake;
+	int lane_to_switch;
 	struct position_t pos_vehicle;
 
 	pthread_mutex_lock(&h->mutex);
@@ -53,12 +142,6 @@ void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 		h->highway_start = true;
 	}
 
-	//MMMH DUBBIO
-	/*if(h->gui_new_update)
-	{
-		pthread_cond_wait(&h->priv_Vehicle[vehicle_id], &h->mutex);
-	}
-*/
 	printf("Veicolo %d: sono in pos: %d \n", vehicle_id, y_pos);
 
 	if(!h->waiting_to_start && y_pos > 8 && h->all_gone)
@@ -106,28 +189,25 @@ void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
 	}
 
 	//---POSITION SWITCH---//
-	position_switch(vehicle_id, h, lane_vehicle);
 
-	graphic_update(vehicle_id, h, GO_AHEAD);
-
-	/*
-	//signal al thread gui
-	h->gui_new_update = true;
-	if(h->gui_is_waiting)
+	if(h->vehicles[vehicle_id].movement_type == TURN_RIGHT)
 	{
-		pthread_cond_signal(&h->priv_Gui);
+		lane_to_switch = lane_vehicle - 1;
+	}
+	else if(h->vehicles[vehicle_id].movement_type == OVERTAKE)
+	{
+		lane_to_switch = lane_vehicle + 1;
+	}
+	else
+	{
+		lane_to_switch = lane_vehicle;
 	}
 
-	//wait sulla conditional variable relativa alla gui
+	position_switch(vehicle_id, h, lane_to_switch);
 
-	h->blocked_by_the_gui = true;
-	pthread_cond_signal(&h->priv_blocked_waiting_gui);
-	h->blocked_by_the_gui = false;
+	graphic_update(vehicle_id, h, h->vehicles[vehicle_id].movement_type);
+	h->vehicles[vehicle_id].movement_type = GO_AHEAD;
 
-	//vengo svegliato dalla gui
-	*/
-
-	//h->vehicles[vehicle_id].position.y_pos //maybe more correct
 	if(h->waiting_to_start && h->vehicles[vehicle_id].position.y_pos > 4)//if there is someone waiting to start and I've passed the 'security' portion of the road
 	{
 		//update variables concerning the waiting and then signal the next vehicle in the waiting queue
@@ -173,121 +253,6 @@ void go(int vehicle_id, struct highway_t *h)//NON BLOCCANTE
  * and wait to be waken up in order to overtake.
  * 3) Try to turn in the right lane
  */
-void check_front_distance_originale(int vehicle_id, struct highway_t *h)//mai bloccante
-{
-	int how_close, nearest_vehicle_in_front, nearest_vehicle_in_the_right, speed_to_adapt;
-	int someone_stop_me_to_overtake;
-	bool overtake, turned_right = false;
-	position_t pos_vehicle;
-	//nearest_vehicle_in_front = nearest_vehicle_in_the_right = -1;
-
-	pthread_mutex_lock(&h->mutex);
-
-	pos_vehicle = h->vehicles[vehicle_id].position;
-
-	//if(h->vehicles[vehicle_id].actual_speed)//if we are already going //NON FUNZIONA MI SA...
-	if(pos_vehicle.y_pos > 4)//if we are already going //NON FUNZIONA MI SA...
-	{
-		//pos_vehicle = h->vehicles[vehicle_id].position;
-
-		//nearest_vehicle_id = check_front(vehicle_id,h, pos_vehicle, pos_vehicle.lane);
-		nearest_vehicle_in_front = check_front(vehicle_id, h, pos_vehicle.lane, false);
-
-		if(nearest_vehicle_in_front == -1)
-		{
-			printf("Veicolo %d: Non c'è nessuno di fronte a me...\n", vehicle_id);
-			h->vehicles[nearest_vehicle_in_front].speed_limited = 0;
-
-			//Check if I can turn right
-			if(pos_vehicle.lane > 0)
-			{
-				nearest_vehicle_in_the_right = check_front(vehicle_id, h, (pos_vehicle.lane-1), false);
-
-				if(nearest_vehicle_in_the_right == -1)//I can turn right
-				{
-					turned_right = true;
-					printf("Veicolo %d: Torno nella corsia a destra...\n", vehicle_id);
-					//---POSITION SWITCH---//
-					position_switch(vehicle_id, h, (pos_vehicle.lane)-1);
-
-					graphic_update(vehicle_id, h, TURN_RIGHT);//probabilmente non serve indicare se è un sorpasso, o forse sì per l'animazione...
-
-					//signal al thread gui
-
-					//wait sulla conditional variable relativa alla gui
-
-					//vengo svegliato dalla gui
-				}
-				else
-				{
-					printf("Veicolo %d: Ho la destra occupata...\n", vehicle_id);
-				}
-			}
-		}
-		else if(h->vehicles[vehicle_id].can_overtake) //A vehicle is near and I'm a car or motorcycle
-		{
-			how_close = pos_vehicle.y_pos - h->vehicles[nearest_vehicle_in_front].position.y_pos;
-			printf("A distanza %d, c'è %d, cerco di superarlo...\n", how_close, nearest_vehicle_in_front);
-
-			//Try to overtake
-			//someone_stop_me_to_overtake = can_overtake(vehicle_id, h);
-			someone_stop_me_to_overtake = check_front(vehicle_id, h, (pos_vehicle.lane)+1, false);
-
-			//if(someone_stop_me_to_overtake != -1)//per ora if, poi while quando sarà implementata la coda di attesa adeguata
-			while(someone_stop_me_to_overtake != -1)
-			{
-				printf("Non posso superare! Alla mia sinistra c'è %d,"
-					   "che occupa lo spazio necessario. Rallento e blocco il sorpasso, in attesa che si liberi...\n", someone_stop_me_to_overtake);
-
-				//Adapt the speed
-				speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
-				h->vehicles[vehicle_id].actual_speed = speed_to_adapt;
-				h->vehicles[nearest_vehicle_in_front].speed_limited = 1;
-
-				//wait in the blocking vehicle's condition variable...
-				h->blocking_someone[someone_stop_me_to_overtake]++;
-
-				pthread_cond_wait(&h->priv_blocked_for_vehicle[someone_stop_me_to_overtake], &h->mutex);
-
-				h->blocking_someone[someone_stop_me_to_overtake]--;
-
-				//recheck the possibility to overtake
-				//someone_stop_me_to_overtake = can_overtake(vehicle_id, h);
-				someone_stop_me_to_overtake = check_front(vehicle_id, h, (pos_vehicle.lane)+1, false);
-			}
-
-			overtake = true;
-			//overtake
-			h->vehicles[nearest_vehicle_in_front].speed_limited = 0;
-
-			//---POSITION SWITCH---//
-			position_switch(vehicle_id, h, (pos_vehicle.lane)+1);
-
-			graphic_update(vehicle_id, h, OVERTAKE);//probabilmente non serve indicare se è un sorpasso, o forse sì per l'animazione...
-
-			//signal al thread gui
-
-			//wait sulla conditional variable relativa alla gui
-
-			//vengo svegliato dalla gui
-
-		}
-		else //TRUCK
-		{
-			speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
-			h->vehicles[vehicle_id].actual_speed = speed_to_adapt;
-			h->vehicles[nearest_vehicle_in_front].speed_limited = 1;
-		}
-	}
-
-	/*if((overtake || turned_right) && h->blocking_someone[vehicle_id] > 0)
-	{
-		//h->blocking_someone[vehicle_id] = 0;
-		pthread_cond_broadcast(&h->priv_Vehicle[vehicle_id]);
-	}*/
-
-	pthread_mutex_unlock(&h->mutex);
-}
 
 void check_front_distance(int vehicle_id, struct highway_t *h)//mai bloccante
 {
@@ -298,22 +263,11 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//mai bloccante
 
 	pthread_mutex_lock(&h->mutex);
 
-	//MMMH DUBBIO
-	/*if(h->gui_new_update)
-	{
-		h->blocked_by_the_gui = true;
-		pthread_cond_wait(&h->priv_blocked_waiting_gui, &h->mutex);
-		h->blocked_by_the_gui = false;
-	}*/
-
 	pos_vehicle = h->vehicles[vehicle_id].position;
 
-	//if(h->vehicles[vehicle_id].actual_speed)//if we are already going //NON FUNZIONA MI SA...
 	if(pos_vehicle.y_pos > 4)//if we are already going //NON FUNZIONA MI SA...
 	{
-		//pos_vehicle = h->vehicles[vehicle_id].position;
 
-		//nearest_vehicle_id = check_front(vehicle_id,h, pos_vehicle, pos_vehicle.lane);
 		nearest_vehicle_in_front = check_front(vehicle_id, h, pos_vehicle.lane, false);
 
 		if(nearest_vehicle_in_front == -1)
@@ -332,25 +286,14 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//mai bloccante
 
 				if(nearest_vehicle_in_the_right == -1)//I can turn right
 				{
-					printf("Veicolo %d: Torno nella corsia a destra...\n", vehicle_id);
+					printf("Veicolo %d: Posso tornare nella corsia a destra...\n", vehicle_id);
+					h->vehicles[vehicle_id].movement_type = TURN_RIGHT;
+
 					//---POSITION SWITCH---//
-					position_switch(vehicle_id, h, (pos_vehicle.lane)-1);
+					//position_switch(vehicle_id, h, (pos_vehicle.lane)-1);
 
-					graphic_update(vehicle_id, h, TURN_RIGHT);//probabilmente non serve indicare se è un sorpasso, o forse sì per l'animazione...
+					//graphic_update(vehicle_id, h, TURN_RIGHT);//probabilmente non serve indicare se è un sorpasso, o forse sì per l'animazione...
 
-					/*
-					//signal al thread gui
-					h->gui_new_update = true;
-					if(h->gui_is_waiting)
-					{
-						pthread_cond_signal(&h->priv_Gui);
-					}
-
-					//wait sulla conditional variable relativa alla gui
-					h->blocked_by_the_gui = true;
-					pthread_cond_signal(&h->priv_blocked_waiting_gui);
-					h->blocked_by_the_gui = false;
-*/
 				}
 				else
 				{
@@ -358,16 +301,16 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//mai bloccante
 				}
 			}
 		}
-		else if(h->vehicles[vehicle_id].can_overtake) //A vehicle is near and I'm a car or motorcycle
+		else if(h->vehicles[vehicle_id].can_overtake
+				&& h->vehicles[nearest_vehicle_in_front].actual_speed < h->vehicles[vehicle_id].actual_speed) //A vehicle is near and I'm a car or motorcycle
 		{
 			how_close = pos_vehicle.y_pos - h->vehicles[nearest_vehicle_in_front].position.y_pos;
 			printf("A distanza %d, c'è %d, cerco di superarlo...\n", how_close, nearest_vehicle_in_front);
 
 			//Try to overtake
-			//someone_stop_me_to_overtake = can_overtake(vehicle_id, h);
 			someone_stop_me_to_overtake = check_front(vehicle_id, h, (pos_vehicle.lane)+1, false);
 
-			if(someone_stop_me_to_overtake != -1)//per ora if, poi while quando sarà implementata la coda di attesa adeguata
+			if(someone_stop_me_to_overtake != -1)
 			//while(someone_stop_me_to_overtake != -1)
 			{
 				printf("Non posso superare! Alla mia sinistra c'è %d,"
@@ -377,52 +320,33 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//mai bloccante
 				speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
 				h->vehicles[vehicle_id].actual_speed = speed_to_adapt;
 				h->vehicles[nearest_vehicle_in_front].speed_limited = 1;
-
-				//wait in the blocking vehicle's condition variable...
-				/*h->blocking_someone[someone_stop_me_to_overtake]++;
-
-				pthread_cond_wait(&h->priv_blocked_for_vehicle[someone_stop_me_to_overtake], &h->mutex);
-
-				h->blocking_someone[someone_stop_me_to_overtake]--;
-
-				//recheck the possibility to overtake
-				//someone_stop_me_to_overtake = can_overtake(vehicle_id, h);
-				someone_stop_me_to_overtake = check_front(vehicle_id, h, (pos_vehicle.lane)+1, false);*/
 			}
 			else
 			{
 				//overtake
 				h->vehicles[nearest_vehicle_in_front].speed_limited = 0;
+				h->vehicles[vehicle_id].movement_type = OVERTAKE;
 
 				//---POSITION SWITCH---//
-				position_switch(vehicle_id, h, (pos_vehicle.lane)+1);
+				//position_switch(vehicle_id, h, (pos_vehicle.lane)+1);
 
 				//registro il cambio di posizione
 				//che verrà applicato dal thread della gui
-
-				graphic_update(vehicle_id, h, OVERTAKE);//probabilmente non serve indicare se è un sorpasso, o forse sì per l'animazione...
-
-				/*
-				//signal al thread gui... dubbio...
-				h->gui_new_update = true;
-				if(h->gui_is_waiting)
-				{
-					pthread_cond_signal(&h->priv_Gui);
-				}
-
-				//wait sulla conditional variable relativa alla gui
-				h->blocked_by_the_gui = true;
-				pthread_cond_signal(&h->priv_blocked_waiting_gui);
-				h->blocked_by_the_gui = false;
-*/
+				//graphic_update(vehicle_id, h, OVERTAKE);//probabilmente non serve indicare se è un sorpasso, o forse sì per l'animazione...
 
 			}
 		}
 		else //TRUCK
 		{
-			speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
-			h->vehicles[vehicle_id].actual_speed = speed_to_adapt;
-			h->vehicles[nearest_vehicle_in_front].speed_limited = 1;
+			//adapt my speed only if the vehicle in front of me is going faster than me
+			//otherwise it is only only returned in front of me after having overtaken
+			if(h->vehicles[nearest_vehicle_in_front].actual_speed < h->vehicles[vehicle_id].actual_speed)
+			{
+				speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
+				h->vehicles[vehicle_id].actual_speed = speed_to_adapt;
+				h->vehicles[nearest_vehicle_in_front].speed_limited = 1;
+			}
+
 		}
 	}
 
@@ -525,9 +449,12 @@ void *go_routine(void *id)
 	//starting the routine
 	for (;;) {
 		printf("Go, veicolo %d\n", vehicle_id);
-		go(vehicle_id,&highway);
+		//go(vehicle_id,&highway);
+		go_refactor(vehicle_id,&highway);
 		//go_ordinato(vehicle_id,&highway);
-		pausetta(100);
+		//pausetta(100);
+		pausetta(200);
+		//pausetta(500);
 	}
 }
 
@@ -538,7 +465,9 @@ void *check_front_distance_routine(void *id)
 	for (;;) {
 		printf("Veicolo %d: controllo distanza\n", vehicle_id);
 		check_front_distance(vehicle_id,&highway);
-		pausetta(50);
+		//pausetta(50);
+		pausetta(100);
+		//pausetta(250);
 	}
 
 }
@@ -651,5 +580,6 @@ void initThreads()
   pthread_attr_destroy(&attr);
 
   // aspetto 5 secondi prima di terminare tutti quanti
+  pausetta(5000);
 
 }

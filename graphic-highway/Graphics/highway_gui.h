@@ -2,8 +2,10 @@
 #define HIGHWAY_GUI_H
 
 #include "highway.h"
+#include "myscene.h"
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QVector>
 
@@ -20,14 +22,17 @@ public:
 	// public methods
 	void displayMainMenu();
 	void initScene();
-	//void moveVehicle();
 
-	QVector<QGraphicsRectItem*> vehicles;
-	//QGraphicsRectItem vehicles[50];
-	//QGraphicsRectItem *vehicles;
+	//QVector<QPixmap*> vehicles;
+	QVector<QGraphicsPixmapItem*> vehicles;
+	//QVector<QGraphicsRectItem*> vehicles;
+
+	QScrollArea* scrollAreaCandidate ;
 
 	// public attributes
 	QGraphicsScene* scene;
+	//MyScene* scene;
+	QScrollBar *scroll;
 
 	bool started;
 	//static bool first = false;
@@ -42,12 +47,6 @@ private:
 		HighwayGui(HighwayGui const&);
 		void operator=(HighwayGui const&);
 
-//private:
-	/*HighwayGui() = default;
-	~HighwayGui() = default;
-	HighwayGui( const HighwayGui& ) = delete;
-	HighwayGui& operator=( const HighwayGui& ) = delete;*/
-
 private:
 	// private methods
 	void drawGUI();
@@ -55,12 +54,5 @@ private:
 	void drawLine(int x, int y, int width, Qt::GlobalColor color, Qt::PenStyle style, double opacity);
 
 };
-
-/*HighwayGui& HighwayGui::instance()
-{
-	static HighwayGui inst;
-	return inst;
-}*/
-
 
 #endif // HIGHWAY_GUI_H

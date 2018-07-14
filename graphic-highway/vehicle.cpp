@@ -23,6 +23,8 @@ struct vehicle_t createMockedVehicle(int type, int id, int max_speed)
 	vehicle.max_speed = max_speed;
 	vehicle.can_overtake = (type == TRUCK) ? 0 : 1;
 	vehicle.min_security_distance = (type == TRUCK) ? 2 : 1;
+	vehicle.movement_type = GO_AHEAD;
+
 	//Initialize lane and position, which will be changed by the go function
 	//highway.vehicles[id].position.lane = highway.vehicles[id].position.x_pos = highway.vehicles[id].position.y_pos = 0;
 
@@ -81,7 +83,8 @@ int check_front(int vehicle_id, struct highway_t *h, int lane_to_check, bool for
 
 	//distance_to_check = (for_the_start) ? h->vehicles[vehicle_id].min_security_distance+3 : h->vehicles[vehicle_id].min_security_distance+1;
 
-	distance_to_check = h->vehicles[vehicle_id].min_security_distance+3;
+	//distance_to_check = h->vehicles[vehicle_id].min_security_distance+3;
+	distance_to_check = h->vehicles[vehicle_id].min_security_distance+4;
 
 	for(i=1; i <= distance_to_check; i++)
 	{

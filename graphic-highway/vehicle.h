@@ -25,6 +25,7 @@ struct vehicle_t
 	int can_overtake;
 	struct position_t position;
 	int speed_limited;
+	int movement_type;
 };
 
 //methods definition

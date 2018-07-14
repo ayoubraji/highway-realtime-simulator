@@ -18,7 +18,9 @@ SOURCES +=\
     Graphics/highway_gui.cpp \
     Graphics/button.cpp \
     threads_controller.cpp \
-    main.cpp
+    main.cpp \
+    Graphics/vehicle_item.cpp \
+    Graphics/myscene.cpp
 
 LIBS += -lpthread
 
@@ -27,4 +29,16 @@ HEADERS  += \
     highway.h \
     Graphics/highway_gui.h \
     Graphics/button.h \
-    threads_controller.h
+    threads_controller.h \
+    Graphics/vehicle_item.h \
+    Graphics/myscene.h
+
+DISTFILES += \
+    Graphics/img/4723.jpg \
+    Graphics/img/car.png \
+    Graphics/img/car_blue.png \
+    Graphics/img/stock.png \
+    Graphics/img/truck.png
+
+RESOURCES += \
+    res.qrc

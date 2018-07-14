@@ -3,42 +3,65 @@
 #include "threads_controller.h"
 #include <QGraphicsTextItem>
 
-/*HighwayGui::HighwayGui(QWidget *parent){
-	// set up the screen
-	//setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	//setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-	//setFixedSize(1024,768);
-	setFixedSize(1200,1080);
-
-	// set up the scene
-	scene = new QGraphicsScene();
-	//scene->setSceneRect(0,0,1024,768);
-	scene->setSceneRect(0,0,1200,1080);
-	//scene->setSceneRect(0,0,1200,50000);
-	setScene(scene);
-
-	started = false;
-}*/
-
-//HighwayGui::HighwayGui() { }
-
-//HighwayGui::~HighwayGui() { }
-
+bool car_entered = false;
 
 void HighwayGui::start(){
 	// clear the screen
 	scene->clear();
+	scene->setSceneRect(0,0,1200,500000);
 
 	started = true;
 
-	//connect(startButton,SIGNAL(clicked()),this,SLOT(start()));
-
 	for(int i=0; i<50; i++ )
 	{
-		//QGraphicsRectItem *vehicle = new QGraphicsRectItem();
-		vehicles.push_back(new QGraphicsRectItem());
-		//vehicles[i] = new QGraphicsRectItem();
+		/*QGraphicsRectItem *vehicle = new QGraphicsRectItem();
+		QBrush brush;
+		vehicle->setBrush(Qt::blue);
+		vehicles.push_back(vehicle);*/
+		//vehicles.push_back(new QGraphicsRectItem());
+		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
+
+		QImage image;
+
+		if(i<15)
+		{
+			image = QImage(":/images/img/truck.png");
+			//pixmap = new QPixmap(":/images/img/truck.png");
+			//pixmap->setPixmap(QPixmap(":/images/img/truck.png"));
+		}
+		else if(i<25)
+		{
+			image = QImage(":/images/img/motorcycle.png");
+			//pixmap = new QPixmap(":/images/img/motorcycle.png");
+			//pixmap->setPixmap(QPixmap(":/images/img/motorcycle.png"));
+		}
+		else if(i == 40)
+		{
+			image = QImage(":/images/img/car_blue.png");
+			//pixmap = new QPixmap(":/images/img/car_blue.png");
+			//pixmap->setPixmap(QPixmap(":/images/img/car_blue.png"));
+		}
+		else
+		{
+			image = QImage(":/images/img/car.png");
+			//pixmap = new QPixmap(":/images/img/car.png");
+			//pixmap->setPixmap(QPixmap(":/images/img/car.png"));
+		}
+
+		QPainter p(&image);
+		QPixmap pix = QPixmap();
+
+		p.setPen(QPen(Qt::red));
+		p.setFont(QFont("Times", 12, QFont::Bold));
+		p.drawText(image.rect(), Qt::AlignCenter,QString::number(i));
+		//pix->setPixmap(QPixmap::fromImage(image));
+		pixmap->setPixmap(QPixmap::fromImage(image));
+
+		//QPainter painter = new QPainter(&pixmap);
+		//painter.setFont( QFont("Arial") );
+		//painter.drawText( QPoint(50, 50), i );
+
+		vehicles.push_back(pixmap);
 	}
 
 	initThreads();
@@ -55,16 +78,21 @@ void HighwayGui::initScene()
 	//setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
 	//setFixedSize(1024,768);
-	setFixedSize(1200,1080);
+	//setFixedSize(1200,1080);
+	setFixedSize(1200,1000);
 
 	// set up the scene
 	scene = new QGraphicsScene();
+	//scene = new MyScene(new QScrollBar(),this);
+	//scene->scroll = new QScrollBar();
+
 	//scene->setSceneRect(0,0,1024,768);
-	scene->setSceneRect(0,0,1200,1080);
-	//scene->setSceneRect(0,0,1200,50000);
+	//scene->setSceneRect(0,0,1200,1000);
+	scene->setSceneRect(0,0,1200,500000);
+
 	setScene(scene);
 
-	centerOn(scene->width(),scene->height());
+	//centerOn(scene->width(),scene->height());
 
 	started = false;
 
@@ -73,9 +101,12 @@ void HighwayGui::initScene()
 
 void HighwayGui::vehicleStart(int vehicle_id)
 {
-	vehicles[vehicle_id]->setRect(0, 0, 100, 100);
+	//vehicles[vehicle_id]->setRect(0, 0, 100, 100);
 	vehicles[vehicle_id]->setPos(scene->width()-350, scene->height());
+
 	scene->addItem(vehicles[vehicle_id]);
+	if(vehicle_id == 40)
+		car_entered = true;
 }
 
 void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
@@ -111,14 +142,25 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 
 		vehicles[vehicle_id]->setPos(x, y);
 
+
 	}
 
-	if(vehicle_id == 30)
+	if(car_entered)
 	{
-		centerOn(vehicles[vehicle_id]);
+		//Adjust the scrollbar if the followed vehicle is near to pass the view zone
+		int diff = this->verticalScrollBar()->value() - vehicles[40]->pos().y();
+
+			if(diff > 700)
+			{
+				printf("diff: %d\n",diff);
+				//this->verticalScrollBar()->setSliderPosition(this->verticalScrollBar()->value() - 1000);
+				this->verticalScrollBar()->setValue(this->verticalScrollBar()->value() - 2000);
+			}
 	}
 
-	//drawPanel(250,0,100,1000,Qt::blue,Qt::SolidPattern,1);
+
+
+
 }
 
 void HighwayGui::displayMainMenu(){
@@ -151,6 +193,7 @@ void HighwayGui::displayMainMenu(){
 	quitButton->setPos(qxPos,qyPos);
 	connect(quitButton,SIGNAL(clicked()),this,SLOT(close()));
 	scene->addItem(quitButton);
+
 }
 
 void HighwayGui::drawPanel(int x, int y, int width, int height, QColor color, Qt::BrushStyle style, double opacity){
@@ -180,7 +223,13 @@ void HighwayGui::drawLine(int x, int y, int width, Qt::GlobalColor color, Qt::Pe
 
 void HighwayGui::drawGUI(){
 
-	scene->setSceneRect(0,0,1200,500000);
+	//scroll until the starting position
+	//scroll(0,50000);
+
+	//scene->setSceneRect(0,0,1200,500000);
+
+	//first setting of scrollbar
+	//scroll(500,100000);
 
 	// draw the left panel
 	drawPanel(0,0,200,scene->height(),Qt::green,Qt::SolidPattern,1);
@@ -196,22 +245,6 @@ void HighwayGui::drawGUI(){
 	drawLine(600, scene->height(), 12, Qt::GlobalColor::white, Qt::DashLine, 1);
 	drawLine(800, scene->height(), 12, Qt::GlobalColor::white, Qt::DashLine, 1);
 
-
-	// place player 1 text
-	//QGraphicsTextItem* p1 = new QGraphicsTextItem("Player 1's Cards: ");
-	//p1->setPos(25,0);
-	//scene->addItem(p1);
-
-	// place player 1 text
-	/*QGraphicsTextItem* p2 = new QGraphicsTextItem("Player 2's Cards: ");
-	p2->setPos(874+25,0);
-	scene->addItem(p2);
-
-	// place whosTurnText
-	whosTurnText = new QGraphicsTextItem();
-	setWhosTurn(QString("PLAYER1"));
-	whosTurnText->setPos(490,0);
-	scene->addItem(whosTurnText);
-*/
+	this->verticalScrollBar()->setSliderPosition(scene->height());
 }
 

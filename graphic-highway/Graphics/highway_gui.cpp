@@ -22,11 +22,11 @@ void HighwayGui::start(){
 		{
 			image = QImage(":/images/img/truck.png");
 		}
-		else if(i<25)
+		else if(i<23)
 		{
 			image = QImage(":/images/img/motorcycle.png");
 		}
-		else if(i == 40)
+		else if(i == 25)
 		{
 			image = QImage(":/images/img/car_blue.png");
 		}
@@ -78,13 +78,19 @@ void HighwayGui::vehicleStart(int vehicle_id)
 	vehicles[vehicle_id]->setPos(scene->width()-350, scene->height());
 
 	scene->addItem(vehicles[vehicle_id]);
-	if(vehicle_id == 40)
+	//if(vehicle_id == 40)
+	if(vehicle_id == 20)
 		car_entered = true;
 }
 
 void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 {
 	int x, y;
+
+	if(x_pos == 3)//The vehicle have overpassed the limit of the lane
+	{
+		//fermare tutto e mostrare schermata failed
+	}
 
 	if(y_pos == 0)
 	{
@@ -111,8 +117,26 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 			break;
 		}
 
-		y = scene->height()-(y_pos*30);
+		switch(x_pos)
+		{
+		case 1:
+			x = x;
+			break;
+		case 0:
+			x = x - 33;
+			break;
+		case 2:
+			x = x + 33;
+			break;
+		case 3:
+			x = x - 66;
+			break;
+		case 4:
+			x = x + 66;
+			break;
+		}
 
+		y = scene->height()-(y_pos*30);
 		vehicles[vehicle_id]->setPos(x, y);
 
 
@@ -121,7 +145,7 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 	if(car_entered)
 	{
 		//Adjust the scrollbar if the followed vehicle is near to pass the view zone
-		int diff = this->verticalScrollBar()->value() - vehicles[40]->pos().y();
+		int diff = this->verticalScrollBar()->value() - vehicles[20]->pos().y();
 
 			if(diff > 200)
 			{

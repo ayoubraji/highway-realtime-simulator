@@ -53,8 +53,7 @@ void go(int vehicle_id, struct highway_t *h)//BLOCCANTE
 
 	while(vehicle_id != h->next_vehicle)
 	{
-		pthread_cond_signal(&h->priv_Vehicle[h->next_vehicle]);//FORSE TROPPO FORZATO COSI...
-
+		//pthread_cond_signal(&h->priv_Vehicle[h->next_vehicle]);//FORSE TROPPO FORZATO COSI...
 		pthread_cond_wait(&h->priv_Vehicle[vehicle_id], &h->mutex);
 	}
 
@@ -63,7 +62,8 @@ void go(int vehicle_id, struct highway_t *h)//BLOCCANTE
 		h->highway_start = true;
 	}
 
-	if(y_pos < 5)//Check that should be done for the first portion of road
+	//if(y_pos == -1)
+	if(y_pos < 5)//Check that should be done for the first portion of the road
 	{
 		can_start = check_front(vehicle_id, h, lane_vehicle, true);
 
@@ -139,6 +139,7 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
 
 	pos_vehicle = h->vehicles[vehicle_id].position;
 
+	//if(pos_vehicle.y_pos != -1)
 	if(pos_vehicle.y_pos > 4)//if we are already going
 	{
 
@@ -150,7 +151,7 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
 
 			if(h->vehicles[vehicle_id].speed_limited)
 			{
-				h->vehicles[nearest_vehicle_in_front].speed_limited = 0;
+				h->vehicles[vehicle_id].speed_limited = 0;
 			}
 
 			//Check if I can turn right
@@ -170,7 +171,9 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
 			}
 		}
 		else if(h->vehicles[vehicle_id].can_overtake
-				&& h->vehicles[nearest_vehicle_in_front].actual_speed < h->vehicles[vehicle_id].actual_speed) //A vehicle is near and I'm a car or motorcycle
+				&& (h->vehicles[nearest_vehicle_in_front].actual_speed < h->vehicles[vehicle_id].actual_speed
+					|| h->vehicles[vehicle_id].speed_limited)
+				) //A vehicle is near and I'm a car or motorcycle
 		{
 			how_close = pos_vehicle.y_pos - h->vehicles[nearest_vehicle_in_front].position.y_pos;
 			printf("A distanza %d, c'è %d, cerco di superarlo...\n", how_close, nearest_vehicle_in_front);
@@ -186,12 +189,12 @@ void check_front_distance(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
 				//Adapt the speed
 				speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
 				h->vehicles[vehicle_id].actual_speed = speed_to_adapt;
-				h->vehicles[nearest_vehicle_in_front].speed_limited = 1;
+				h->vehicles[vehicle_id].speed_limited = 1;
 			}
 			else
 			{
 				//overtake
-				h->vehicles[nearest_vehicle_in_front].speed_limited = 0;
+				h->vehicles[vehicle_id].speed_limited = 0;
 				h->vehicles[vehicle_id].movement_type = OVERTAKE;
 
 			}
@@ -223,12 +226,12 @@ void lane_detection(int vehicle_id, struct highway_t *h)//MAI BLOCCANTE
 	pos_vehicle = h->vehicles[vehicle_id].position;
 	lane_vehicle = pos_vehicle.lane;
 
-	//0 is the center of the lane, -1 left, 1 right
+	//1 is the center of the lane, 0 left, 2 right
 	x_pos = pos_vehicle.x_pos;
 	y_pos = pos_vehicle.y_pos;
 
-	//if x_pos is -1 or 1, so not in the middle of the lane, the position should be corrected
-	if(x_pos != 0)
+	//if x_pos is 0 or 2, so not in the middle of the lane, the position should be corrected
+	if(x_pos != 1)
 	{
 		h->vehicles[vehicle_id].should_correct_alignment = true;
 	}
@@ -264,8 +267,8 @@ void *go_routine(void *id)
 	for (;;) {
 		printf("Go, veicolo %d\n", vehicle_id);
 		go(vehicle_id,&highway);
-		pausetta(100);
-		//pausetta(200);
+		//pausetta(100);
+		pausetta(160);
 		//pausetta(500);
 	}
 }
@@ -277,21 +280,22 @@ void *check_front_distance_routine(void *id)
 	for (;;) {
 		printf("Veicolo %d: controllo distanza\n", vehicle_id);
 		check_front_distance(vehicle_id,&highway);
-		pausetta(50);
-		//pausetta(100);
+		//pausetta(50);
+		pausetta(80);
 		//pausetta(250);
 	}
 
 }
 
-void *lane_detection_routine(void id)
+void *lane_detection_routine(void *id)
 {
 	long vehicle_id = (long) id;
 	//starting the routine
 	for (;;) {
 		printf("Vehicle %d: lane detection routine\n", vehicle_id);
 		lane_detection(vehicle_id,&highway);
-		pausetta(150);
+		//pausetta(200);
+		pausetta(200);
 	}
 }
 
@@ -322,6 +326,7 @@ void initThreads()
   {
 	  pthread_create(&p, &attr, go_routine, (void *)i);
 	  pthread_create(&p, &attr, check_front_distance_routine,  (void *)i);
+	  pthread_create(&p, &attr, lane_detection_routine,  (void *)i);
   }
 
   pthread_attr_destroy(&attr);

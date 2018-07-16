@@ -5,7 +5,7 @@
 
 bool car_entered = false;
 
-void HighwayGui::start(){
+void HighwayGui::standardStart(){
 	// clear the screen
 	scene->clear();
 	scene->setSceneRect(0,0,1200,500000);
@@ -53,6 +53,20 @@ void HighwayGui::start(){
 
 }
 
+void HighwayGui::displayCustomForm()
+{
+	dialog = new customChoiceDialog();
+	dialog->show();
+
+	connect( dialog, SIGNAL( accepted() ), SLOT( customStart() ) );
+}
+
+void HighwayGui::customStart()
+{
+	//Prendo i valori dalla dialog
+
+}
+
 void HighwayGui::initScene()
 {
 	// set up the screen
@@ -64,7 +78,7 @@ void HighwayGui::initScene()
 	// set up the scene
 	scene = new QGraphicsScene();
 
-	scene->setSceneRect(0,0,1200,500000);
+	scene->setSceneRect(0,0,1200,1000);
 
 	setScene(scene);
 
@@ -158,6 +172,7 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
 
 void HighwayGui::displayMainMenu(){
 
+	int txPos, tyPos, bxPos, byPos, qxPos, qyPos;
 	initScene();
 
 	//initGuiThread();
@@ -166,28 +181,91 @@ void HighwayGui::displayMainMenu(){
 	QGraphicsTextItem* titleText = new QGraphicsTextItem(QString("Autonomous vehicles highway"));
 	QFont titleFont("comic sans",50);
 	titleText->setFont(titleFont);
-	int txPos = this->width()/2 - titleText->boundingRect().width()/2;
-	int tyPos = 150;
+	txPos = this->width()/2 - titleText->boundingRect().width()/2;
+	tyPos = 25;
 	titleText->setPos(txPos,tyPos);
 	scene->addItem(titleText);
 
+
+	// create the standard start button
+	Button* standardStartButton = new Button(QString("Start with standard options"));
+	bxPos = this->width()/2 - standardStartButton->boundingRect().width();
+	byPos = 500;
+	standardStartButton->setPos(bxPos,byPos);
+	connect(standardStartButton,SIGNAL(clicked()),this,SLOT(standardStart()));
+	scene->addItem(standardStartButton);
+
+	// create the custom start button
+	Button* customStartButton = new Button(QString("Set custom choices"));
+	bxPos = this->width()/2 + 20;
+	byPos = 500;
+	customStartButton->setPos(bxPos,byPos);
+	connect(customStartButton,SIGNAL(clicked()),this,SLOT(displayCustomForm()));
+	scene->addItem(customStartButton);
+
+	// create the quit button
+	Button* quitButton = new Button(QString("Quit"));
+	qxPos = this->width()/3 + 125 ;
+	qyPos = 600;
+	quitButton->setPos(qxPos,qyPos);
+	connect(quitButton,SIGNAL(clicked()),this,SLOT(close()));
+	scene->addItem(quitButton);
+
+}
+
+/*void HighwayGui::displayMainMenu_old(){
+
+	int txPos, tyPos, bxPos, byPos, qxPos, qyPos;
+	initScene();
+
+	//initGuiThread();
+
+	// create the title text
+	QGraphicsTextItem* titleText = new QGraphicsTextItem(QString("Autonomous vehicles highway"));
+	QFont titleFont("comic sans",50);
+	titleText->setFont(titleFont);
+	txPos = this->width()/2 - titleText->boundingRect().width()/2;
+	tyPos = 25;
+	titleText->setPos(txPos,tyPos);
+	scene->addItem(titleText);
+
+	// create the vehicle choice form
+	QGraphicsTextItem* vehicle_choice = new QGraphicsTextItem(QString("Vehicles choise:"));
+	QFont subtitleFont("comic sans",25);
+	vehicle_choice->setFont(subtitleFont);
+	txPos = 90;
+	tyPos = 150;
+	vehicle_choice->setPos(txPos,tyPos);
+	scene->addItem(vehicle_choice);
+
+	standard = new QRadioButton("Standard (50 vehicles, %trucks %cars %motorcycles)", this);
+	standard->setGeometry(100,100,200,200);
+	custom = new QRadioButton("Custom:", this);
+
+	/*vehicles_number = QLineEdit();
+	// vehicles_number.setValidator(QIntValidator())
+	vehicles_number.setMaxLength(3);
+	vehicles_number.setAlignment(Qt.AlignRight);
+	vehicles_number.setFont(QFont("Arial",20));*/
+
 	// create the play button
-	Button* startButton = new Button(QString("Start"));
-	int bxPos = this->width()/2 - startButton->boundingRect().width()/2;
-	int byPos = 275;
+	/*Button* startButton = new Button(QString("Start"));
+	bxPos = this->width()/2 - startButton->boundingRect().width();
+	byPos = 900;
 	startButton->setPos(bxPos,byPos);
 	connect(startButton,SIGNAL(clicked()),this,SLOT(start()));
 	scene->addItem(startButton);
 
 	// create the quit button
 	Button* quitButton = new Button(QString("Quit"));
-	int qxPos = this->width()/2 - quitButton->boundingRect().width()/2;
-	int qyPos = 350;
+	qxPos = this->width()/2 + 20;
+	qyPos = 900;
 	quitButton->setPos(qxPos,qyPos);
 	connect(quitButton,SIGNAL(clicked()),this,SLOT(close()));
 	scene->addItem(quitButton);
 
 }
+*/
 
 void HighwayGui::drawPanel(int x, int y, int width, int height, QColor color, Qt::BrushStyle style, double opacity){
 	// draws a panel at the specified location with the specified properties

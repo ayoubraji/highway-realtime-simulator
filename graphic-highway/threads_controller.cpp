@@ -295,7 +295,7 @@ void *lane_detection_routine(void *id)
 		printf("Vehicle %d: lane detection routine\n", vehicle_id);
 		lane_detection(vehicle_id,&highway);
 		//pausetta(200);
-		pausetta(200);
+		pausetta(100);
 	}
 }
 

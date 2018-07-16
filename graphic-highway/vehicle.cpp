@@ -37,7 +37,7 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 
 	//random between 1 and 10
 	random_int = rand() % 500 + 1;
-	if(random_int < 5)
+	if(random_int < 50)
 	{
 		//if it is in 1 or 3 and the vehicle haven't detected the disalignment,
 		//the system have failed

@@ -20,7 +20,8 @@ SOURCES +=\
     threads_controller.cpp \
     main.cpp \
     Graphics/vehicle_item.cpp \
-    Graphics/myscene.cpp
+    Graphics/myscene.cpp \
+    Graphics/customchoicedialog.cpp
 
 LIBS += -lpthread
 
@@ -31,14 +32,18 @@ HEADERS  += \
     Graphics/button.h \
     threads_controller.h \
     Graphics/vehicle_item.h \
-    Graphics/myscene.h
+    Graphics/myscene.h \
+    Graphics/customchoicedialog.h
 
 DISTFILES += \
     Graphics/img/4723.jpg \
     Graphics/img/car.png \
     Graphics/img/car_blue.png \
     Graphics/img/stock.png \
-    Graphics/img/truck.png
+    Graphics/img/truck.png \
 
 RESOURCES += \
     res.qrc
+
+FORMS += \
+    Graphics/customchoicedialog.ui

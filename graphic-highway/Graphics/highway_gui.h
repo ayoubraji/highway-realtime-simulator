@@ -8,6 +8,10 @@
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QVector>
+#include <QRadioButton>
+#include <QLineEdit>
+#include <QGraphicsLineItem>
+#include <Graphics/customchoicedialog.h>
 
 class HighwayGui: public QGraphicsView{
 	Q_OBJECT
@@ -27,6 +31,18 @@ public:
 
 	QScrollArea* scrollAreaCandidate ;
 
+	customChoiceDialog *dialog;
+
+	//Main Menu elements
+	//vehicles choice
+	QRadioButton *standard;
+	QRadioButton *custom;
+
+	//custom choices
+	QLineEdit vehicles_number, trucks_perc, cars_perc, motorcycle_perc;
+
+
+
 	// public attributes
 	QGraphicsScene* scene;
 	QScrollBar *scroll;
@@ -34,9 +50,10 @@ public:
 	bool started;
 private:
 	void vehicleStart(int vehicle_id);
-
+	void customStart();
 public slots:
-	void start();
+	void standardStart();
+	void displayCustomForm();
 	void moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos);
 private:
 		HighwayGui() {}

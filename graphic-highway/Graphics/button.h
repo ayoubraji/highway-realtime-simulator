@@ -4,6 +4,7 @@
 #include <QGraphicsRectItem>
 #include <QGraphicsSceneMouseEvent>
 
+//Button for the MainMenu
 class Button:public QObject, public QGraphicsRectItem{
     Q_OBJECT
 public:

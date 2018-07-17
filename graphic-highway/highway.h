@@ -5,6 +5,7 @@
 #include "semaphore.h"
 #include "vehicle.h"
 #include "Graphics/highway_gui.h"
+#include "highway_parameters.h"
 
 //Highway lanes
 #define LANES 4
@@ -12,7 +13,7 @@
 //Road lenght
 //Lo si può vedere anche come numero di caselle,
 //dove ogni veicolo occupa n caselle
-#define ROAD_LENGHT 50000
+#define ROAD_LENGHT 5000
 
 //Movements
 enum MOVEMENTS{GO_AHEAD, OVERTAKE, TURN_RIGHT};
@@ -47,9 +48,13 @@ struct highway_t
 	//da spostare l'inizializzazione in initHi...
 	bool highway_start;
 
+	int vehicle_to_track;
+	bool rare_frequency;
+
 };
 
-void initHighway(struct highway_t *h);
+void initStandardHighway(struct highway_t *h);
+void initCustomHighway(struct highway_t *h, struct highway_parameters_t parameters);
 
 void graphic_update(int vehicle_id, struct highway_t *h, int movement);
 

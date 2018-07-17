@@ -1,6 +1,8 @@
 #include "vehicle.h"
 #include <iostream>
 
+#define ROAD_LENGHT 5000
+
 struct vehicle_t createVehicle(int type, int max_speed)
 {
 	struct vehicle_t vehicle;
@@ -20,7 +22,11 @@ struct vehicle_t createVehicle(int type, int max_speed)
 
 	vehicle.position.y_pos = -1;
 
+	vehicle.position.travel_completed = false;
+
 	vehicle.should_correct_alignment = false;
+
+	vehicle.to_be_tracked = false;
 
 	return vehicle;
 }
@@ -29,14 +35,16 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 {
 	int lane_vehicle, x_pos, y_pos, new_x_pos, new_y_pos, actual_speed, random_int;
 	struct position_t pos_vehicle;
+	int frequency;
 
+	frequency = (h->rare_frequency) ? 500 : 200;
 	pos_vehicle = h->vehicles[vehicle_id].position;
 	lane_vehicle = pos_vehicle.lane;
 	x_pos = pos_vehicle.x_pos;
 	y_pos = pos_vehicle.y_pos; //-1 initially
 
 	//random between 1 and 10
-	random_int = rand() % 500 + 1;
+	random_int = rand() % frequency + 1;
 	if(random_int < 50)
 	{
 		//if it is in 1 or 3 and the vehicle haven't detected the disalignment,
@@ -50,7 +58,7 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 			new_x_pos = 3;
 			break;
 		case 1:
-			new_x_pos = (random_int > 2) ? 0 : 2;
+			new_x_pos = (random_int > 25) ? 0 : 2;
 		}
 	}
 	else
@@ -72,21 +80,37 @@ void position_switch(int vehicle_id, struct highway_t *h, int lane)
 	new_y_pos = (actual_speed > 80) ? new_y_pos+1 : new_y_pos;
 	new_y_pos = (actual_speed > 120) ? new_y_pos+1 : new_y_pos;
 
-	if(y_pos != -1)//if the vehicle is already on the road, it is necessary to set the previous position as free (-1)
+	//The vehicle have completed the travel
+	if(new_y_pos >= ROAD_LENGHT)
+	{
+		new_y_pos = ROAD_LENGHT;
+		h->vehicles[vehicle_id].position.travel_completed = true;
+	}
+
+	//if the vehicle is already on the road, it is necessary to set the previous position as free (-1)
+	if(y_pos != -1)
 	{
 		h->road[lane_vehicle][x_pos][y_pos] = -1;
 	}
-	h->road[lane][new_x_pos][new_y_pos] = vehicle_id; //updating the new position in the road's array
 
+	//updating the new position in the road's array
+	h->road[lane][new_x_pos][new_y_pos] = vehicle_id;
+
+	//The truck occupies 2 slots of the array
 	if(h->vehicles[vehicle_id].type == TRUCK)
 	{
 		h->road[lane_vehicle][x_pos][y_pos+1] = -1;
-		h->road[lane][new_x_pos][new_y_pos+1] = vehicle_id;
+
+		if(!h->vehicles[vehicle_id].position.travel_completed)
+		{
+			h->road[lane][new_x_pos][new_y_pos+1] = vehicle_id;
+		}
 	}
 
 	h->vehicles[vehicle_id].position.lane = lane;
 	h->vehicles[vehicle_id].position.x_pos = new_x_pos;
 	h->vehicles[vehicle_id].position.y_pos = new_y_pos;
+
 	printf("PS Movimento veicolo %d nella posizione: (%d, %d) corsia %d, a velocità: %d\n",
 		   vehicle_id, h->vehicles[vehicle_id].position.x_pos, h->vehicles[vehicle_id].position.y_pos,
 		   h->vehicles[vehicle_id].position.lane, h->vehicles[vehicle_id].actual_speed);

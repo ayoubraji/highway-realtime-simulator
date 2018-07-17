@@ -2,69 +2,188 @@
 #include "button.h"
 #include "threads_controller.h"
 #include <QGraphicsTextItem>
+#include "highway_parameters.h"
+#include <QApplication>
 
-bool car_entered = false;
+#define ROAD_LENGHT 5000
 
-void HighwayGui::standardStart(){
+int to_be_tracked = -1;
+
+customChoiceDialog *dialog;
+
+void HighwayGui::standardStart()
+{
+	bool isAmotorcycle;
+
 	// clear the screen
 	scene->clear();
-	scene->setSceneRect(0,0,1200,500000);
+	scene->setSceneRect(0,0,1200,SCENE_LENGHT);
 
 	started = true;
 
 	for(int i=0; i<50; i++ )
 	{
+		isAmotorcycle = false;
 		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
-
 		QImage image;
 
-		if(i<15)
+		if(i<=15)
 		{
 			image = QImage(":/images/img/truck.png");
 		}
-		else if(i<23)
+		else if(i<=25)
 		{
 			image = QImage(":/images/img/motorcycle.png");
-		}
-		else if(i == 25)
-		{
-			image = QImage(":/images/img/car_blue.png");
+			isAmotorcycle = true;
 		}
 		else
 		{
-			image = QImage(":/images/img/car.png");
+			image = QImage(":/images/img/car_blue.png");
 		}
 
 		QPainter p(&image);
-		QPixmap pix = QPixmap();
+		Qt::GlobalColor color;
+		int font;
 
-		p.setPen(QPen(Qt::red));
-		p.setFont(QFont("Times", 12, QFont::Bold));
+		if(i == 23)
+		{
+			color = Qt::yellow;
+		}
+		else
+		{
+			color = Qt::black;
+		}
+
+		if(isAmotorcycle)
+		{
+			font = 8;
+		}
+		else
+		{
+			font = 12;
+		}
+
+		p.setFont(QFont("Times", font, QFont::Bold));
+		p.setPen(QPen(color));
 		p.drawText(image.rect(), Qt::AlignCenter,QString::number(i));
 		pixmap->setPixmap(QPixmap::fromImage(image));
 
 		vehicles.push_back(pixmap);
 	}
 
-	initThreads();
-	//initVehiclesThreads();
+	initStandardThreads();
 
 	drawGUI();
-
-}
-
-void HighwayGui::displayCustomForm()
-{
-	dialog = new customChoiceDialog();
-	dialog->show();
-
-	connect( dialog, SIGNAL( accepted() ), SLOT( customStart() ) );
 }
 
 void HighwayGui::customStart()
 {
 	//Prendo i valori dalla dialog
+	int trucks, motorcycles;
+	bool isAmotorcycle;
 
+	started = true;
+	struct highway_parameters_t parameters;
+
+	//dialog->setValues();
+
+	/*QCoreApplication::postEvent(dialog, new QEvent(QEvent::UpdateRequest),
+								Qt::LowEventPriority);
+	QMetaObject::invokeMethod(dialog, "setValues");*/
+
+	trucks = dialog->vehicles_number * dialog->trucks_perc / 100;
+	motorcycles = dialog->vehicles_number * dialog->motorcycles_perc / 100;
+
+	for(int i=0; i<dialog->vehicles_number; i++ )
+	{
+		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
+
+		QImage image;
+
+		isAmotorcycle = false;
+
+		if(i<= trucks)
+		{
+			image = QImage(":/images/img/truck.png");
+		}
+		else if(i<=motorcycles+trucks)
+		{
+			image = QImage(":/images/img/motorcycle.png");
+			isAmotorcycle = true;
+		}
+		else
+		{
+			image = QImage(":/images/img/car_blue.png");
+		}
+
+		QPainter p(&image);
+		Qt::GlobalColor color;
+		int font;
+
+		if(i == dialog->vehicle_to_track)
+		{
+			color = Qt::yellow;
+		}
+		else
+		{
+			color = Qt::black;
+		}
+
+		if(isAmotorcycle)
+		{
+			font = 8;
+			color = Qt::white;
+		}
+		else
+		{
+			font = 12;
+		}
+
+		p.setFont(QFont("Times", font, QFont::Bold));
+		p.setPen(QPen(color));
+		p.drawText(image.rect(), Qt::AlignCenter,QString::number(i));
+		pixmap->setPixmap(QPixmap::fromImage(image));
+
+		vehicles.push_back(pixmap);
+	}
+
+	parameters.trucks_perc = dialog->trucks_perc;
+	parameters.cars_perc = dialog->cars_perc;
+	parameters.frequent_frequency = dialog->frequent_frequency;
+	parameters.motorcycles_perc = dialog->motorcycles_perc;
+	parameters.rare_frequency = dialog->rare_frequency;
+	parameters.vehicles_number = dialog->vehicles_number;
+	parameters.vehicle_to_track = dialog->vehicle_to_track;
+
+	//initThreads with parameters
+	initCustomThreads(parameters);
+
+	//reset the scene
+	scene = new QGraphicsScene();
+	scene->setSceneRect(0,0,1200,SCENE_LENGHT);
+	setScene(scene);
+
+	drawGUI();
+}
+
+/*void customChoiceDialog::setValues()
+{
+	parameters->cars_perc = ui->cars_perc->value();
+	parameters->trucks_perc = ui->trucks_perc->value();
+	parameters->motorcycles_perc = ui->motorcycles_perc->value();
+
+	parameters->vehicles_number = ui->vehicles_number->value();
+	parameters->vehicle_to_track = ui->vehicle_to_track->toPlainText().toInt();
+
+	parameters->rare_frequency = ui->rare_frequency->isChecked();
+	parameters->frequent_frequency = ui->frequent_frequency->isChecked();
+}*/
+
+void HighwayGui::displayCustomForm()
+{
+	dialog = new customChoiceDialog(this);
+	connect( dialog, SIGNAL(accepted()),SLOT(customStart() ) );
+	dialog->show();
 }
 
 void HighwayGui::initScene()
@@ -84,7 +203,6 @@ void HighwayGui::initScene()
 
 	started = false;
 
-
 }
 
 void HighwayGui::vehicleStart(int vehicle_id)
@@ -92,82 +210,90 @@ void HighwayGui::vehicleStart(int vehicle_id)
 	vehicles[vehicle_id]->setPos(scene->width()-350, scene->height());
 
 	scene->addItem(vehicles[vehicle_id]);
-	//if(vehicle_id == 40)
-	if(vehicle_id == 20)
-		car_entered = true;
 }
 
-void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos)
+void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, bool track)
 {
 	int x, y;
 
 	if(x_pos == 3)//The vehicle have overpassed the limit of the lane
 	{
-		//fermare tutto e mostrare schermata failed
+		//It never happens but... in the case it should be better to display a pop-up
 	}
 
-	if(y_pos == 0)
+	//The vehicle have completed the travel
+	if(y_pos == ROAD_LENGHT)
 	{
-		vehicleStart(vehicle_id);
+		//The vehicle should be removed from the scene
+		scene->removeItem(vehicles[vehicle_id]);
 	}
 	else
 	{
-		switch(lane)
+		if(y_pos == 0)//The vehicle is just started, so it should be displayed for the first time
 		{
-		case 0:
-			x = scene->width()-350;
-			break;
-		case 1:
-			x = scene->width()-550;
-			break;
-		case 2:
-			x = scene->width()-750;
-			break;
-		case 3:
-			x = scene->width()-950;
-			break;
-		case 4:
-			x = scene->width()-1050;
-			break;
-		}
-
-		switch(x_pos)
-		{
-		case 1:
-			x = x;
-			break;
-		case 0:
-			x = x - 33;
-			break;
-		case 2:
-			x = x + 33;
-			break;
-		case 3:
-			x = x - 66;
-			break;
-		case 4:
-			x = x + 66;
-			break;
-		}
-
-		y = scene->height()-(y_pos*30);
-		vehicles[vehicle_id]->setPos(x, y);
-
-
-	}
-
-	if(car_entered)
-	{
-		//Adjust the scrollbar if the followed vehicle is near to pass the view zone
-		int diff = this->verticalScrollBar()->value() - vehicles[20]->pos().y();
-
-			if(diff > 200)
+			vehicleStart(vehicle_id);
+			if(track)
 			{
-				printf("diff: %d\n",diff);
-				this->verticalScrollBar()->setValue(this->verticalScrollBar()->value() - 1300);
+				to_be_tracked = vehicle_id;
 			}
-	}
+		}
+		else
+		{
+			switch(lane)
+			{
+			case 0:
+				x = scene->width()-350;
+				break;
+			case 1:
+				x = scene->width()-550;
+				break;
+			case 2:
+				x = scene->width()-750;
+				break;
+			case 3:
+				x = scene->width()-950;
+				break;
+			case 4:
+				x = scene->width()-1050;
+				break;
+			}
 
+			switch(x_pos)
+			{
+			case 1:
+				x = x;
+				break;
+			case 0:
+				x = x - 33;
+				break;
+			case 2:
+				x = x + 33;
+				break;
+			case 3:
+				x = x - 66;
+				break;
+			case 4:
+				x = x + 66;
+				break;
+			}
+
+			y = scene->height()-(y_pos*30);
+			vehicles[vehicle_id]->setPos(x, y);
+
+		}
+
+		if(to_be_tracked != -1)
+		{
+			//Adjust the scrollbar if the followed vehicle is near to pass the view zone
+			int diff = this->verticalScrollBar()->value() - vehicles[to_be_tracked]->pos().y();
+
+				if(diff > 200)
+				{
+					printf("diff: %d\n",diff);
+					this->verticalScrollBar()->setValue(this->verticalScrollBar()->value() - 1300);
+				}
+		}
+	}
 }
 
 void HighwayGui::displayMainMenu(){
@@ -175,8 +301,6 @@ void HighwayGui::displayMainMenu(){
 	int txPos, tyPos, bxPos, byPos, qxPos, qyPos;
 	initScene();
 
-	//initGuiThread();
-
 	// create the title text
 	QGraphicsTextItem* titleText = new QGraphicsTextItem(QString("Autonomous vehicles highway"));
 	QFont titleFont("comic sans",50);
@@ -186,11 +310,33 @@ void HighwayGui::displayMainMenu(){
 	titleText->setPos(txPos,tyPos);
 	scene->addItem(titleText);
 
+	// create the description
+	QGraphicsTextItem* description =
+			new QGraphicsTextItem(
+				QString("The user can start a simulation of a highway's portion chosing the vehicles "
+						"to put on the road:\n\n"
+						"Truck [max speed: 60 km/h, can_overtake: no]\n"
+						"Motorcycle [max speed: 80 km/h, can_overtake: yes]\n"
+						"Car [max speed: 130 km/h, can_overtake: yes]\n\n"
+						"Standard options: \n"
+						"50 vehicles [15 Trucks, 25 motorcycles, 10 cars]\n"
+						"Vehicle tracked: 23 - "
+						"Horizontal moviment simulation frequency: rare\n\n"
+						"Custom choice:\n"
+						"The user can chose the presence percentage of each vehicle type\n"
+						"(The order is alway truck, then motorcycles and then cars, to involve more overtaking)"));
+
+	QFont font("comic sans",18);
+	description->setFont(font);
+	txPos = 30;
+	tyPos = 150;
+	description->setPos(txPos,tyPos);
+	scene->addItem(description);
 
 	// create the standard start button
 	Button* standardStartButton = new Button(QString("Start with standard options"));
 	bxPos = this->width()/2 - standardStartButton->boundingRect().width();
-	byPos = 500;
+	byPos = 700;
 	standardStartButton->setPos(bxPos,byPos);
 	connect(standardStartButton,SIGNAL(clicked()),this,SLOT(standardStart()));
 	scene->addItem(standardStartButton);
@@ -198,74 +344,20 @@ void HighwayGui::displayMainMenu(){
 	// create the custom start button
 	Button* customStartButton = new Button(QString("Set custom choices"));
 	bxPos = this->width()/2 + 20;
-	byPos = 500;
+	byPos = 700;
 	customStartButton->setPos(bxPos,byPos);
 	connect(customStartButton,SIGNAL(clicked()),this,SLOT(displayCustomForm()));
 	scene->addItem(customStartButton);
 
 	// create the quit button
 	Button* quitButton = new Button(QString("Quit"));
-	qxPos = this->width()/3 + 125 ;
-	qyPos = 600;
+	qxPos = this->width()/3 ;
+	qyPos = 820;
 	quitButton->setPos(qxPos,qyPos);
 	connect(quitButton,SIGNAL(clicked()),this,SLOT(close()));
 	scene->addItem(quitButton);
 
 }
-
-/*void HighwayGui::displayMainMenu_old(){
-
-	int txPos, tyPos, bxPos, byPos, qxPos, qyPos;
-	initScene();
-
-	//initGuiThread();
-
-	// create the title text
-	QGraphicsTextItem* titleText = new QGraphicsTextItem(QString("Autonomous vehicles highway"));
-	QFont titleFont("comic sans",50);
-	titleText->setFont(titleFont);
-	txPos = this->width()/2 - titleText->boundingRect().width()/2;
-	tyPos = 25;
-	titleText->setPos(txPos,tyPos);
-	scene->addItem(titleText);
-
-	// create the vehicle choice form
-	QGraphicsTextItem* vehicle_choice = new QGraphicsTextItem(QString("Vehicles choise:"));
-	QFont subtitleFont("comic sans",25);
-	vehicle_choice->setFont(subtitleFont);
-	txPos = 90;
-	tyPos = 150;
-	vehicle_choice->setPos(txPos,tyPos);
-	scene->addItem(vehicle_choice);
-
-	standard = new QRadioButton("Standard (50 vehicles, %trucks %cars %motorcycles)", this);
-	standard->setGeometry(100,100,200,200);
-	custom = new QRadioButton("Custom:", this);
-
-	/*vehicles_number = QLineEdit();
-	// vehicles_number.setValidator(QIntValidator())
-	vehicles_number.setMaxLength(3);
-	vehicles_number.setAlignment(Qt.AlignRight);
-	vehicles_number.setFont(QFont("Arial",20));*/
-
-	// create the play button
-	/*Button* startButton = new Button(QString("Start"));
-	bxPos = this->width()/2 - startButton->boundingRect().width();
-	byPos = 900;
-	startButton->setPos(bxPos,byPos);
-	connect(startButton,SIGNAL(clicked()),this,SLOT(start()));
-	scene->addItem(startButton);
-
-	// create the quit button
-	Button* quitButton = new Button(QString("Quit"));
-	qxPos = this->width()/2 + 20;
-	qyPos = 900;
-	quitButton->setPos(qxPos,qyPos);
-	connect(quitButton,SIGNAL(clicked()),this,SLOT(close()));
-	scene->addItem(quitButton);
-
-}
-*/
 
 void HighwayGui::drawPanel(int x, int y, int width, int height, QColor color, Qt::BrushStyle style, double opacity){
 	// draws a panel at the specified location with the specified properties
@@ -289,11 +381,12 @@ void HighwayGui::drawLine(int x, int y, int width, Qt::GlobalColor color, Qt::Pe
 	line->setPen(pen);
 	line->setLine(QLineF(x, 0, x, y));
 	scene->addItem(line);
-
 }
 
 void HighwayGui::drawGUI(){
 
+	int i, txPos, tyPos;
+	QGraphicsTextItem* text;
 
 	// draw the left panel
 	drawPanel(0,0,200,scene->height(),Qt::green,Qt::SolidPattern,1);
@@ -309,6 +402,34 @@ void HighwayGui::drawGUI(){
 	drawLine(600, scene->height(), 12, Qt::GlobalColor::white, Qt::DashLine, 1);
 	drawLine(800, scene->height(), 12, Qt::GlobalColor::white, Qt::DashLine, 1);
 
+	// draw road sings
+	for(i=0; i<= SCENE_LENGHT; i = i + 1000)
+	{
+		drawPanel(scene->width()-200,SCENE_LENGHT - i - 100,200,100,Qt::blue,Qt::SolidPattern,1);
+
+		// create the text of the road sign
+		if(i == 0)
+		{
+			text = new QGraphicsTextItem(QString("BEGINNING!"));
+		}
+		else if(i == SCENE_LENGHT)
+		{
+			text = new QGraphicsTextItem(QString("ENDING!"));
+		}
+		else
+		{
+			text = new QGraphicsTextItem(QString("KM: %1 of %2").arg(i/1000).arg(SCENE_LENGHT/1000));
+		}
+
+		QFont font("comic sans",18);
+		text->setFont(font);
+		text->setDefaultTextColor(Qt::white);
+		txPos = scene->width()-200;
+		tyPos = SCENE_LENGHT - i - 100;
+		text->setPos(txPos,tyPos);
+		scene->addItem(text);
+
+	}
+
 	this->verticalScrollBar()->setSliderPosition(scene->height());
 }
-

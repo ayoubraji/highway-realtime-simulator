@@ -33,7 +33,8 @@ HEADERS  += \
     threads_controller.h \
     Graphics/vehicle_item.h \
     Graphics/myscene.h \
-    Graphics/customchoicedialog.h
+    Graphics/customchoicedialog.h \
+    highway_parameters.h
 
 DISTFILES += \
     Graphics/img/4723.jpg \

@@ -14,6 +14,7 @@ struct position_t
 	int lane;
 	int x_pos;
 	int y_pos;
+	bool travel_completed;
 };
 
 struct vehicle_t
@@ -27,6 +28,7 @@ struct vehicle_t
 	int speed_limited;
 	int movement_type;
 	bool should_correct_alignment;
+	bool to_be_tracked;
 };
 
 //methods definition

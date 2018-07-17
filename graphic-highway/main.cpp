@@ -16,9 +16,5 @@ int main(int argc, char **argv)
   gui.show();
   gui.displayMainMenu();
 
-	//Avvio il thread della gui, da cui partiranno gli altri thread
-	//quando l'utente premerà su start
-	//initGuiThread();
-
   return app.exec();
 }

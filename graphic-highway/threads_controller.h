@@ -3,7 +3,8 @@
 
 #include "Graphics/highway_gui.h"
 
-void initThreads();
+void initStandardThreads();
+void initCustomThreads(highway_parameters_t parameters);
 void initGuiThread();
 void initVehiclesThreads();
 

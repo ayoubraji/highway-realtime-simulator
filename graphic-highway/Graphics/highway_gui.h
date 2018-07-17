@@ -13,6 +13,8 @@
 #include <QGraphicsLineItem>
 #include <Graphics/customchoicedialog.h>
 
+#define SCENE_LENGHT 150000
+
 class HighwayGui: public QGraphicsView{
 	Q_OBJECT
 public:
@@ -29,9 +31,9 @@ public:
 
 	QVector<QGraphicsPixmapItem*> vehicles;
 
-	QScrollArea* scrollAreaCandidate ;
+	QScrollArea* scrollAreaCandidate;
 
-	customChoiceDialog *dialog;
+	//customChoiceDialog *dialog;
 
 	//Main Menu elements
 	//vehicles choice
@@ -41,8 +43,6 @@ public:
 	//custom choices
 	QLineEdit vehicles_number, trucks_perc, cars_perc, motorcycle_perc;
 
-
-
 	// public attributes
 	QGraphicsScene* scene;
 	QScrollBar *scroll;
@@ -50,11 +50,11 @@ public:
 	bool started;
 private:
 	void vehicleStart(int vehicle_id);
-	void customStart();
 public slots:
 	void standardStart();
+	void customStart();
 	void displayCustomForm();
-	void moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos);
+	void moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, bool to_be_tracked);
 private:
 		HighwayGui() {}
 		HighwayGui(HighwayGui const&);

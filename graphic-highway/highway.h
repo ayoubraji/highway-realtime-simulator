@@ -1,3 +1,8 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #ifndef HIGHWAY_H
 #define HIGHWAY_H
 
@@ -11,9 +16,8 @@
 #define LANES 4
 
 //Road lenght
-//Lo si può vedere anche come numero di caselle,
-//dove ogni veicolo occupa n caselle
-#define ROAD_LENGHT 5000
+//#define ROAD_LENGHT 5000
+#define ROAD_LENGHT 2500
 
 //Movements
 enum MOVEMENTS{GO_AHEAD, OVERTAKE, TURN_RIGHT};
@@ -21,21 +25,24 @@ enum MOVEMENTS{GO_AHEAD, OVERTAKE, TURN_RIGHT};
 #define OVERTAKE 11
 #define TURN_RIGHT 12
 
-/* struttura condivisa */
+/* Shared structure */
 struct highway_t
 {
     //array containing all the vehicles
     struct vehicle_t *vehicles;
 
     pthread_mutex_t mutex;
+
+	//private conditional variables, one for each vehicle
 	pthread_cond_t *priv_Vehicle;
 
-	//vehicles quantity... da cambiare e rendere dinamico
+	//vehicles quantity
 	int n_vehicles;
 
     //Array that represents each portion of the highway
-    //NULL (or -1) if there is no vehicle in the [L][L][ROAD_LENGTH] position
+	//-1 if there is no vehicle in the [lane][x][y] position
     //the vehicle id otherwise
+	//the second dimension rappresents the range of each lane
     int road[LANES][LANES][ROAD_LENGHT];
 
 	//number of waiting vehicles
@@ -45,10 +52,12 @@ struct highway_t
     //queue iterator
     int *next;
 
-	//da spostare l'inizializzazione in initHi...
 	bool highway_start;
 
+	//vehicle that will be tracked on the gui
 	int vehicle_to_track;
+
+	//frequency of lateral movement inside the lane
 	bool rare_frequency;
 
 };

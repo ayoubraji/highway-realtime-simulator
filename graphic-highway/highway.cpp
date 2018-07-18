@@ -1,12 +1,17 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #include "highway.h"
 #include <iostream>
 #include <QApplication>
 
-
-void initStandardHighway(struct highway_t *h)//DA MODIFICARE quando non saranno mockati qua dentro ma in vehicles tramite gui
+//init the highway with standard/mocked parameters
+void initStandardHighway(struct highway_t *h)
 {
 
-	int i,j,k,l;
+	int i,k,l;
 	pthread_mutexattr_t m_attr;
 	pthread_condattr_t c_attr;
 	int max_speed, temp_type;
@@ -25,11 +30,12 @@ void initStandardHighway(struct highway_t *h)//DA MODIFICARE quando non saranno 
 	h->vehicle_to_track = 23;
 	h->rare_frequency = true;
 
-
+	//dinamic allocation
 	h->vehicles = (vehicle_t*) malloc(h->n_vehicles * sizeof(struct vehicle_t));
 	h->priv_Vehicle = (pthread_cond_t*)malloc(h->n_vehicles * sizeof(pthread_cond_t));
 	h->next = (int*)malloc(h->n_vehicles * sizeof(int));
 
+	//creating the vehicles
 	for(i=0; i<h->n_vehicles; i++)
 	{
 		if(i<=trucks)
@@ -83,15 +89,16 @@ void initStandardHighway(struct highway_t *h)//DA MODIFICARE quando non saranno 
 
 }
 
-void initCustomHighway(struct highway_t *h, struct highway_parameters_t parameters)//DA MODIFICARE quando non saranno mockati qua dentro ma in vehicles tramite gui
+//init the highway with user parameters chosen by the dialog
+void initCustomHighway(struct highway_t *h, struct highway_parameters_t parameters)
 {
-
-	int i,j,k,l;
+	int i,k,l;
 	pthread_mutexattr_t m_attr;
 	pthread_condattr_t c_attr;
 	int max_speed, temp_type;
 	int cars, trucks, motorcycles;
 
+	//calculating the amount of vehicles for each type
 	cars = parameters.vehicles_number * parameters.cars_perc / 100;
 	trucks = parameters.vehicles_number * parameters.trucks_perc / 100;
 	motorcycles = parameters.vehicles_number * parameters.motorcycles_perc / 100;
@@ -103,21 +110,23 @@ void initCustomHighway(struct highway_t *h, struct highway_parameters_t paramete
 	pthread_condattr_init(&c_attr);
 	pthread_mutex_init(&h->mutex, &m_attr);
 
-	//-------------------------------start mock
+
 	h->n_vehicles = parameters.vehicles_number;
 
+	//dinamic allocation
 	h->vehicles = (vehicle_t*) malloc(h->n_vehicles * sizeof(struct vehicle_t));
 	h->priv_Vehicle = (pthread_cond_t*)malloc(h->n_vehicles * sizeof(pthread_cond_t));
 	h->next = (int*)malloc(h->n_vehicles * sizeof(int));
 
+	//vehicles creation
 	for(i=0; i<h->n_vehicles; i++)
 	{
-		if(i<=trucks)
+		if(i<=trucks && trucks != 0)
 		{
 			temp_type = TRUCK;
 			max_speed = 60;
 		}
-		else if(i<=motorcycles+trucks)
+		else if(i<=motorcycles+trucks && motorcycles != 0)
 		{
 			temp_type = MOTORCYCLE;
 			max_speed = 80;
@@ -139,7 +148,6 @@ void initCustomHighway(struct highway_t *h, struct highway_parameters_t paramete
 		h->next[i] = i+1;
 
 	}
-	//------------------------------end mock
 
 	for(i=0; i<LANES; i++)
 	{
@@ -163,16 +171,18 @@ void initCustomHighway(struct highway_t *h, struct highway_parameters_t paramete
 
 }
 
+//passing the new position of a vehicle to the gui
 void graphic_update(int vehicle_id, struct highway_t *h, int movement)
 {
 	struct position_t pos_vehicle;
 	pos_vehicle = h->vehicles[vehicle_id].position;
 
-	printf("Movimento veicolo %d a posizione: (%d, %d) corsia %d, a velocità: %d\n",
+	printf("Vehicle movement %d in position: (%d, %d) lane %d, speed of: %d\n",
 		   vehicle_id, pos_vehicle.x_pos, pos_vehicle.y_pos, pos_vehicle.lane, h->vehicles[vehicle_id].actual_speed);
 
 	HighwayGui& gui = HighwayGui::getInstance();
 
+	//invoking the graphical request to the highway_gui by an event
 	QCoreApplication::postEvent(&gui, new QEvent(QEvent::UpdateRequest),
 								Qt::LowEventPriority);
 	QMetaObject::invokeMethod(&gui, "moveVehicle", Q_ARG(int, vehicle_id),
@@ -180,6 +190,4 @@ void graphic_update(int vehicle_id, struct highway_t *h, int movement)
 							  Q_ARG(int, pos_vehicle.x_pos),
 							  Q_ARG(int, pos_vehicle.y_pos),
 							  Q_ARG(bool,h->vehicles[vehicle_id].to_be_tracked));
-
-
 }

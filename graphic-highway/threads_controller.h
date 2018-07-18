@@ -1,3 +1,8 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #ifndef THREADS_CONTROLLER_H
 #define THREADS_CONTROLLER_H
 

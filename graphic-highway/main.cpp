@@ -1,3 +1,8 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #include <cstdio>
 #include <iostream>
 #include <cstdlib>

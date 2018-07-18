@@ -29,13 +29,14 @@ struct highway_t highway;
  *      lane_detection() never blocking
 */
 
-/* Behaviour
- * 1) Check if the vehicle can start
- * 2) Check if it's its turn to go ahead
- * 1) Increase speed if necessary
- * 2) Change the vehicle's position in the matrix rappresenting the road
+/* Go function behaviour
+ * 1) It checks if the vehicle can start
+ * 2) It checks if it's its turn to go ahead
+ * 1) It increases speed if necessary
+ * 2) It changes the vehicle's position in the matrix rappresenting the road
+ *
+ * It returns the y position of the vehicle, in order to know when it completes the travel
  */
-
 int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 {
 	int can_start = -1;
@@ -50,7 +51,7 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 	x_pos = pos_vehicle.x_pos;
 	y_pos = pos_vehicle.y_pos;
 
-	printf("Veicolo %d: sono in pos: %d \n", vehicle_id, y_pos);
+	printf("Vehicle %d: I'm at pos: %d \n", vehicle_id, y_pos);
 
 	while(vehicle_id != h->next_vehicle)
 	{
@@ -62,7 +63,9 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 		h->highway_start = true;
 	}
 
-	if(y_pos < 5)//Check that should be done for the first portion of the road
+	//Check that should be done for the first portion of the road
+	//in order to mantain
+	if(y_pos < 5)
 	{
 		can_start = check_front(vehicle_id, h, lane_vehicle, true);
 
@@ -85,7 +88,7 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 		}
 	}
 
-	printf("Veicolo %d: vado avanti\n", vehicle_id);
+	printf("Vehicle %d: I go ahead\n", vehicle_id);
 
 	if(!(h->vehicles[vehicle_id].speed_limited) && h->vehicles[vehicle_id].actual_speed < h->vehicles[vehicle_id].max_speed)
 	{
@@ -94,6 +97,8 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 
 	//---POSITION SWITCH---//
 
+	//Chosing the lane in which the vehicle should go or stay
+	//The movement type is decided by the front distance thread
 	if(h->vehicles[vehicle_id].movement_type == TURN_RIGHT)
 	{
 		lane_to_switch = lane_vehicle - 1;
@@ -109,7 +114,9 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 
 	position_switch(vehicle_id, h, lane_to_switch);
 
+	//Graphical update of the movement
 	graphic_update(vehicle_id, h, h->vehicles[vehicle_id].movement_type);
+
 	h->vehicles[vehicle_id].movement_type = GO_AHEAD;
 
 	//I wake up the next available vehicle.
@@ -120,7 +127,7 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 	{
 		h->next_vehicle = h->next[h->next_vehicle];
 	}
-	printf("Veicolo %d: cerco di far partire il veicolo %d\n", vehicle_id, h->next_vehicle);
+	printf("Vehicle %d: I'm trying to wake up the vehicle %d\n", vehicle_id, h->next_vehicle);
 	pthread_cond_signal(&h->priv_Vehicle[h->next_vehicle]);
 
 	to_return = h->vehicles[vehicle_id].position.y_pos;
@@ -131,10 +138,10 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 
 
 /* Behaviour
- * 1) Check if there is a vehicle in front and if the distance is critical.
+ * 1) It checks if there is a vehicle in front and if the distance is critical.
  * 2) In case there is a "critical" situation, it "signal" to the vehicle that should overtake in the next turn,
  * If it can't overtake it adapts the speed to mantain the security distance
- * 3) Check if it can turn right
+ * 3) It checks if it can turn right
  */
 int check_front_distance(int vehicle_id, struct highway_t *h)//NEVER BLOCKING
 {
@@ -147,14 +154,13 @@ int check_front_distance(int vehicle_id, struct highway_t *h)//NEVER BLOCKING
 
 	pos_vehicle = h->vehicles[vehicle_id].position;
 
-	if(pos_vehicle.y_pos > 4)//if we are already going
+	if(pos_vehicle.y_pos > 4)//if we are already going and have passed the starting portion
 	{
-
 		nearest_vehicle_in_front = check_front(vehicle_id, h, pos_vehicle.lane, false);
 
 		if(nearest_vehicle_in_front == -1)
 		{
-			printf("Veicolo %d: Non c'è nessuno di fronte a me...\n", vehicle_id);
+			printf("Vehicle %d: There are no vehicles in front of me...\n", vehicle_id);
 
 			if(h->vehicles[vehicle_id].speed_limited)
 			{
@@ -168,30 +174,30 @@ int check_front_distance(int vehicle_id, struct highway_t *h)//NEVER BLOCKING
 
 				if(nearest_vehicle_in_the_right == -1)//I can turn right
 				{
-					printf("Veicolo %d: Posso tornare nella corsia a destra...\n", vehicle_id);
+					printf("Vehicle %d: I can turn in the right lane...\n", vehicle_id);
 					h->vehicles[vehicle_id].movement_type = TURN_RIGHT;
 				}
 				else
 				{
-					printf("Veicolo %d: Ho la destra occupata...\n", vehicle_id);
+					printf("Vehicle %d: The right lane is occupied...\n", vehicle_id);
 				}
 			}
 		}
 		else if(h->vehicles[vehicle_id].can_overtake
 				&& (h->vehicles[nearest_vehicle_in_front].actual_speed < h->vehicles[vehicle_id].actual_speed
 					|| h->vehicles[vehicle_id].speed_limited)
-				) //A vehicle is near and I'm a car or motorcycle
+				) //A vehicle is near and I'm a car or motorcycle, so I can overtake
 		{
 			how_close = pos_vehicle.y_pos - h->vehicles[nearest_vehicle_in_front].position.y_pos;
-			printf("A distanza %d, c'è %d, cerco di superarlo...\n", how_close, nearest_vehicle_in_front);
+			printf("At distance %d, there is %d, I'm trying to overtake it...\n", how_close, nearest_vehicle_in_front);
 
 			//Try to overtake
 			someone_stop_me_to_overtake = check_front(vehicle_id, h, (pos_vehicle.lane)+1, false);
 
 			if(someone_stop_me_to_overtake != -1)
 			{
-				printf("Non posso superare! Alla mia sinistra c'è %d,"
-					   "che occupa lo spazio necessario. Rallento e blocco il sorpasso, in attesa che si liberi...\n", someone_stop_me_to_overtake);
+				printf("I can't overtake! On my left there is %d. "
+					   "I'll slow down and block the overtake...\n", someone_stop_me_to_overtake);
 
 				//Adapt the speed
 				speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
@@ -202,14 +208,14 @@ int check_front_distance(int vehicle_id, struct highway_t *h)//NEVER BLOCKING
 			{
 				//overtake
 				h->vehicles[vehicle_id].speed_limited = 0;
+				//I modify the movement_type variable in order to let the go thread, do the correct movement
 				h->vehicles[vehicle_id].movement_type = OVERTAKE;
-
 			}
 		}
 		else //TRUCK
 		{
 			//adapt my speed only if the vehicle in front of me is going faster than me
-			//otherwise it is only only returned in front of me after having overtaken
+			//otherwise if there is someone near it is only returned in front of me after having overtaken
 			if(h->vehicles[nearest_vehicle_in_front].actual_speed < h->vehicles[vehicle_id].actual_speed)
 			{
 				speed_to_adapt = h->vehicles[nearest_vehicle_in_front].actual_speed;
@@ -257,7 +263,7 @@ int lane_detection(int vehicle_id, struct highway_t *h)//NEVER BLOCKING
 	return to_return;
 }
 
-//little pause, to "reduce" the threads frequency
+//little pause, to "reduce" the threads frequency and to avoid starvation
 void pausetta(int msec)
 {
   struct timespec t;
@@ -282,8 +288,6 @@ void *go_routine(void *id)
 		printf("Go routine, vehicle %d\n", vehicle_id);
 		where_arrived = go(vehicle_id,&highway);
 		pausetta(100);
-		//pausetta(160);
-		//pausetta(500);
 	}
 
 	printf("The vehicle %d has completed the travel! :)\n", vehicle_id);
@@ -300,8 +304,6 @@ void *check_front_distance_routine(void *id)
 		printf("CheckFront routine, vehicle %d\n", vehicle_id);
 		where_arrived = check_front_distance(vehicle_id,&highway);
 		pausetta(50);
-		//pausetta(80);
-		//pausetta(250);
 	}
 
 }
@@ -316,8 +318,6 @@ void *lane_detection_routine(void *id)
 	{
 		printf("Lane detection routine, vehicle %d\n", vehicle_id);
 		where_arrived = lane_detection(vehicle_id,&highway);
-		//pausetta(200);
-		//pausetta(100);
 		pausetta(40);
 	}
 }
@@ -328,18 +328,14 @@ void initStandardThreads()
   pthread_t p;
   int i;
 
-  // inizializzo i numeri casuali, usati nella funzione pausetta
-  srand(555);
-
-  pthread_attr_init(&attr); //check commas!!!
+  pthread_attr_init(&attr);
 
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-  // inizializzo il sistema (da modificare una volta tolto il mock presente al suo interno)
+  // init the Highway with standard options
   initStandardHighway(&highway);
 
   //Create threads
-  //Vehicle control threads
   for(i=0; i<(highway.n_vehicles); i++)
   {
 	  pthread_create(&p, &attr, go_routine, (void *)i);
@@ -348,9 +344,6 @@ void initStandardThreads()
   }
 
   pthread_attr_destroy(&attr);
-
-  // aspetto 2 secondi prima di terminare tutti quanti
-  pausetta(2000);
 
 }
 
@@ -360,18 +353,14 @@ void initCustomThreads(struct highway_parameters_t parameters)
   pthread_t p;
   int i;
 
-  // inizializzo i numeri casuali, usati nella funzione pausetta
-  srand(555);
-
-  pthread_attr_init(&attr); //check commas!!!
+  pthread_attr_init(&attr);
 
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-  // inizializzo il sistema (da modificare una volta tolto il mock presente al suo interno)
+  // init the Highway with user parameters
   initCustomHighway(&highway, parameters);
 
   //Create threads
-  //Vehicle control threads
   for(i=0; i<(highway.n_vehicles); i++)
   {
 	  pthread_create(&p, &attr, go_routine, (void *)i);
@@ -380,8 +369,5 @@ void initCustomThreads(struct highway_parameters_t parameters)
   }
 
   pthread_attr_destroy(&attr);
-
-  // aspetto 2 secondi prima di terminare tutti quanti
-  pausetta(2000);
 
 }

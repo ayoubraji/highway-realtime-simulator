@@ -1,3 +1,8 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #ifndef VEHICLE_H
 #define VEHICLE_H
 
@@ -14,7 +19,7 @@ struct position_t
 	int lane;
 	int x_pos;
 	int y_pos;
-	bool travel_completed;
+	bool travel_completed; //indicating that the vehicle has reached the ending of the highway
 };
 
 struct vehicle_t

@@ -1,19 +1,22 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #ifndef HIGHWAY_GUI_H
 #define HIGHWAY_GUI_H
 
 #include "highway.h"
-#include "myscene.h"
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QVector>
-#include <QRadioButton>
-#include <QLineEdit>
 #include <QGraphicsLineItem>
 #include <Graphics/customchoicedialog.h>
 
-#define SCENE_LENGHT 150000
+//#define SCENE_LENGHT 150000
+#define SCENE_LENGHT 75000
 
 class HighwayGui: public QGraphicsView{
 	Q_OBJECT
@@ -25,6 +28,7 @@ public:
 
 		return highway_gui;
 	}
+
 	// public methods
 	void displayMainMenu();
 	void initScene();
@@ -33,28 +37,21 @@ public:
 
 	QScrollArea* scrollAreaCandidate;
 
-	//customChoiceDialog *dialog;
-
-	//Main Menu elements
-	//vehicles choice
-	QRadioButton *standard;
-	QRadioButton *custom;
-
-	//custom choices
-	QLineEdit vehicles_number, trucks_perc, cars_perc, motorcycle_perc;
-
 	// public attributes
 	QGraphicsScene* scene;
 	QScrollBar *scroll;
 
 	bool started;
+
 private:
 	void vehicleStart(int vehicle_id);
+
 public slots:
 	void standardStart();
 	void customStart();
 	void displayCustomForm();
 	void moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, bool to_be_tracked);
+
 private:
 		HighwayGui() {}
 		HighwayGui(HighwayGui const&);

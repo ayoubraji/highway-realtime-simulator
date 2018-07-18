@@ -19,8 +19,6 @@ SOURCES +=\
     Graphics/button.cpp \
     threads_controller.cpp \
     main.cpp \
-    Graphics/vehicle_item.cpp \
-    Graphics/myscene.cpp \
     Graphics/customchoicedialog.cpp
 
 LIBS += -lpthread
@@ -31,8 +29,6 @@ HEADERS  += \
     Graphics/highway_gui.h \
     Graphics/button.h \
     threads_controller.h \
-    Graphics/vehicle_item.h \
-    Graphics/myscene.h \
     Graphics/customchoicedialog.h \
     highway_parameters.h
 

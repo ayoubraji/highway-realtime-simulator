@@ -1,11 +1,18 @@
+/*
+	Ayoub Raji
+	Project of Real Time Embedded Systems course
+*/
+
 #include "highway_gui.h"
 #include "button.h"
 #include "threads_controller.h"
 #include <QGraphicsTextItem>
 #include "highway_parameters.h"
 #include <QApplication>
+#include <QScrollBar>
 
-#define ROAD_LENGHT 5000
+//#define ROAD_LENGHT 5000
+#define ROAD_LENGHT 2500
 
 int to_be_tracked = -1;
 
@@ -20,7 +27,7 @@ void HighwayGui::standardStart()
 	scene->setSceneRect(0,0,1200,SCENE_LENGHT);
 
 	started = true;
-
+	//creating the vehicles in the scene
 	for(int i=0; i<50; i++ )
 	{
 		isAmotorcycle = false;
@@ -71,6 +78,7 @@ void HighwayGui::standardStart()
 		vehicles.push_back(pixmap);
 	}
 
+	//init the threads
 	initStandardThreads();
 
 	drawGUI();
@@ -78,23 +86,16 @@ void HighwayGui::standardStart()
 
 void HighwayGui::customStart()
 {
-	//Prendo i valori dalla dialog
 	int trucks, motorcycles;
 	bool isAmotorcycle;
 
 	started = true;
-	struct highway_parameters_t parameters;
 
-	//dialog->setValues();
+	//Taking values from the dialog
+	trucks = dialog->parameters.vehicles_number * dialog->parameters.trucks_perc / 100;
+	motorcycles = dialog->parameters.vehicles_number * dialog->parameters.motorcycles_perc / 100;
 
-	/*QCoreApplication::postEvent(dialog, new QEvent(QEvent::UpdateRequest),
-								Qt::LowEventPriority);
-	QMetaObject::invokeMethod(dialog, "setValues");*/
-
-	trucks = dialog->vehicles_number * dialog->trucks_perc / 100;
-	motorcycles = dialog->vehicles_number * dialog->motorcycles_perc / 100;
-
-	for(int i=0; i<dialog->vehicles_number; i++ )
+	for(int i=0; i<dialog->parameters.vehicles_number; i++ )
 	{
 		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
 
@@ -102,11 +103,11 @@ void HighwayGui::customStart()
 
 		isAmotorcycle = false;
 
-		if(i<= trucks)
+		if(i<= trucks && trucks != 0)
 		{
 			image = QImage(":/images/img/truck.png");
 		}
-		else if(i<=motorcycles+trucks)
+		else if(i<=motorcycles+trucks && motorcycles != 0)
 		{
 			image = QImage(":/images/img/motorcycle.png");
 			isAmotorcycle = true;
@@ -120,7 +121,7 @@ void HighwayGui::customStart()
 		Qt::GlobalColor color;
 		int font;
 
-		if(i == dialog->vehicle_to_track)
+		if(i == dialog->parameters.vehicle_to_track)
 		{
 			color = Qt::yellow;
 		}
@@ -147,16 +148,8 @@ void HighwayGui::customStart()
 		vehicles.push_back(pixmap);
 	}
 
-	parameters.trucks_perc = dialog->trucks_perc;
-	parameters.cars_perc = dialog->cars_perc;
-	parameters.frequent_frequency = dialog->frequent_frequency;
-	parameters.motorcycles_perc = dialog->motorcycles_perc;
-	parameters.rare_frequency = dialog->rare_frequency;
-	parameters.vehicles_number = dialog->vehicles_number;
-	parameters.vehicle_to_track = dialog->vehicle_to_track;
-
 	//initThreads with parameters
-	initCustomThreads(parameters);
+	initCustomThreads(dialog->parameters);
 
 	//reset the scene
 	scene = new QGraphicsScene();
@@ -165,19 +158,6 @@ void HighwayGui::customStart()
 
 	drawGUI();
 }
-
-/*void customChoiceDialog::setValues()
-{
-	parameters->cars_perc = ui->cars_perc->value();
-	parameters->trucks_perc = ui->trucks_perc->value();
-	parameters->motorcycles_perc = ui->motorcycles_perc->value();
-
-	parameters->vehicles_number = ui->vehicles_number->value();
-	parameters->vehicle_to_track = ui->vehicle_to_track->toPlainText().toInt();
-
-	parameters->rare_frequency = ui->rare_frequency->isChecked();
-	parameters->frequent_frequency = ui->frequent_frequency->isChecked();
-}*/
 
 void HighwayGui::displayCustomForm()
 {
@@ -239,6 +219,7 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, boo
 		}
 		else
 		{
+			//setting the movement on the scene
 			switch(lane)
 			{
 			case 0:
@@ -278,10 +259,13 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, boo
 			}
 
 			y = scene->height()-(y_pos*30);
+
+			//setting the new position of the vehicle
 			vehicles[vehicle_id]->setPos(x, y);
 
 		}
 
+		//for the vehicle that should be tracked
 		if(to_be_tracked != -1)
 		{
 			//Adjust the scrollbar if the followed vehicle is near to pass the view zone
@@ -289,7 +273,6 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, boo
 
 				if(diff > 200)
 				{
-					printf("diff: %d\n",diff);
 					this->verticalScrollBar()->setValue(this->verticalScrollBar()->value() - 1300);
 				}
 		}
@@ -405,7 +388,9 @@ void HighwayGui::drawGUI(){
 	// draw road sings
 	for(i=0; i<= SCENE_LENGHT; i = i + 1000)
 	{
-		drawPanel(scene->width()-200,SCENE_LENGHT - i - 100,200,100,Qt::blue,Qt::SolidPattern,1);
+		tyPos = (i == SCENE_LENGHT) ? SCENE_LENGHT - i : SCENE_LENGHT - i - 100;
+
+		drawPanel(scene->width()-200,tyPos,200,100,Qt::blue,Qt::SolidPattern,1);
 
 		// create the text of the road sign
 		if(i == 0)
@@ -425,7 +410,7 @@ void HighwayGui::drawGUI(){
 		text->setFont(font);
 		text->setDefaultTextColor(Qt::white);
 		txPos = scene->width()-200;
-		tyPos = SCENE_LENGHT - i - 100;
+		tyPos = (i == SCENE_LENGHT) ? SCENE_LENGHT - i : SCENE_LENGHT - i - 100;
 		text->setPos(txPos,tyPos);
 		scene->addItem(text);
 

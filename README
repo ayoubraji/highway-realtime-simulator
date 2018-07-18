@@ -1,3 +1,5 @@
-#Real Time Highway simulator
+Real Time Highway simulator
 
-##Simulate vehicles behaviour in a highway, using pthreads and a graphic library
+Simulate autnomous vehicles behaviour in a highway, using pthreads and Qt as graphic library
+
+

@@ -1,7 +1,7 @@
 # Real Time Highway simulator
 Simulate autonomous vehicles behaviour in a highway, using pthreads and Qt as graphic library
 
-The user can start a simulation of a highway's portion chosing the vehicles to put on the road:
+The user can start a simulation of a highway's portion choosing the vehicles to put on the road:
 - Truck [max speed: 60 km/h, can_overtake: no]
 - Motorcycle [max speed: 80 km/h, can_overtake: yes]
 - Car [max speed: 130 km/h, can_overtake: yes]

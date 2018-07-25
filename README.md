@@ -9,7 +9,7 @@ The user can start a simulation of a highway's portion choosing the vehicles to 
 It is possibile to start with standard options:
 - 50 vehicles [15 Trucks, 25 motorcycles, 10 cars]
 - Vehicle tracked: 23
-- Horizontal moviment simulation frequency: rare
+- Horizontal movement simulation frequency: rare
 Otherwise the user can make a custom choice, choosing the presence percentage of each vehicle type
 
 (The order is alway truck, then motorcycles and then cars, to involve more overtaking)

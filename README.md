@@ -1,4 +1,4 @@
-#Real Time Highway simulator
+# Real Time Highway simulator
 Simulate autonomous vehicles behaviour in a highway, using pthreads and Qt as graphic library
 
 # Dependencies

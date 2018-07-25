@@ -15,7 +15,7 @@ make
 
 ```
 
-#Run from terminal to let it be verbose
+# Run from terminal to let it be verbose
 ```
 ./graphic-highway
 

@@ -2,7 +2,7 @@
 Simulate autonomous vehicles behaviour in a highway, using pthreads and Qt as graphic library
 
 # Dependencies
-- Qt
+- Qt (greater than version 4)
 - qmake
 
 # Building

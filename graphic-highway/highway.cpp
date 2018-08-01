@@ -83,6 +83,7 @@ void initStandardHighway(struct highway_t *h)
 
 	h->next[h->n_vehicles-1] = h->waiting_to_start = h->next_vehicle = 0;
 	h->highway_start = false;
+	h->only_one_left = false;
 
 	pthread_condattr_destroy(&c_attr);
 	pthread_mutexattr_destroy(&m_attr);
@@ -165,6 +166,7 @@ void initCustomHighway(struct highway_t *h, struct highway_parameters_t paramete
 
 	h->next[h->n_vehicles-1] = h->waiting_to_start = h->next_vehicle = 0;
 	h->highway_start = false;
+	h->only_one_left = false;
 
 	pthread_condattr_destroy(&c_attr);
 	pthread_mutexattr_destroy(&m_attr);

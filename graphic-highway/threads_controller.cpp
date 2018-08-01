@@ -119,16 +119,19 @@ int go(int vehicle_id, struct highway_t *h)//COULD BE BLOCKING
 
 	h->vehicles[vehicle_id].movement_type = GO_AHEAD;
 
-	//I wake up the next available vehicle.
-	h->next_vehicle = h->next[vehicle_id];
+	//Finding the next vehicle that should go next
+	findNextVehicle(vehicle_id, h);
 
-	// I must skip the vehicles that are already arrived in the end
-	while(h->vehicles[h->next_vehicle].position.travel_completed)
+	// If I'm the next vehicle, so I'm the only vehicle left on the road and I should not wake up other vehicles
+	if(h->next_vehicle != vehicle_id)
 	{
-		h->next_vehicle = h->next[h->next_vehicle];
+		printf("Vehicle %d: I'm trying to wake up the vehicle %d\n", vehicle_id, h->next_vehicle);
+		pthread_cond_signal(&h->priv_Vehicle[h->next_vehicle]);
 	}
-	printf("Vehicle %d: I'm trying to wake up the vehicle %d\n", vehicle_id, h->next_vehicle);
-	pthread_cond_signal(&h->priv_Vehicle[h->next_vehicle]);
+	else
+	{
+		h->only_one_left = true;
+	}
 
 	to_return = h->vehicles[vehicle_id].position.y_pos;
 	pthread_mutex_unlock(&h->mutex);
@@ -154,7 +157,7 @@ int check_front_distance(int vehicle_id, struct highway_t *h)//NEVER BLOCKING
 
 	pos_vehicle = h->vehicles[vehicle_id].position;
 
-	if(pos_vehicle.y_pos > 4)//if we are already going and have passed the starting portion
+	if(pos_vehicle.y_pos > 4 && !h->only_one_left)//if we are already going and have passed the starting portion
 	{
 		nearest_vehicle_in_front = check_front(vehicle_id, h, pos_vehicle.lane, false);
 
@@ -290,7 +293,6 @@ void *go_routine(void *id)
 		pausetta(100);
 	}
 
-	printf("The vehicle %d has completed the travel! :)\n", vehicle_id);
 }
 
 void *check_front_distance_routine(void *id)
@@ -320,6 +322,7 @@ void *lane_detection_routine(void *id)
 		where_arrived = lane_detection(vehicle_id,&highway);
 		pausetta(40);
 	}
+
 }
 
 void initStandardThreads()
@@ -370,4 +373,21 @@ void initCustomThreads(struct highway_parameters_t parameters)
 
   pthread_attr_destroy(&attr);
 
+}
+
+
+void findNextVehicle(int vehicle_id, struct highway_t *h)
+{
+	//If I'm not the only one left
+	if(!h->only_one_left)
+	{
+		//Natural next available vehicle.
+		h->next_vehicle = h->next[vehicle_id];
+
+		// I must skip the vehicles that are already arrived in the end
+		while(h->vehicles[h->next_vehicle].position.travel_completed)
+		{
+			h->next_vehicle = h->next[h->next_vehicle];
+		}
+	}
 }

@@ -42,6 +42,7 @@ public:
 	QScrollBar *scroll;
 
 	bool started;
+	int arrived, n_vehicles;
 
 private:
 	void vehicleStart(int vehicle_id);

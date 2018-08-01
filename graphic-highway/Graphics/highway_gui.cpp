@@ -27,8 +27,10 @@ void HighwayGui::standardStart()
 	scene->setSceneRect(0,0,1200,SCENE_LENGHT);
 
 	started = true;
+	arrived = 0;
+	n_vehicles = 50;
 	//creating the vehicles in the scene
-	for(int i=0; i<50; i++ )
+	for(int i=0; i<n_vehicles; i++ )
 	{
 		isAmotorcycle = false;
 		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
@@ -90,12 +92,14 @@ void HighwayGui::customStart()
 	bool isAmotorcycle;
 
 	started = true;
+	arrived = 0;
 
+	n_vehicles = dialog->parameters.vehicles_number;
 	//Taking values from the dialog
-	trucks = dialog->parameters.vehicles_number * dialog->parameters.trucks_perc / 100;
-	motorcycles = dialog->parameters.vehicles_number * dialog->parameters.motorcycles_perc / 100;
+	trucks = n_vehicles * dialog->parameters.trucks_perc / 100;
+	motorcycles = n_vehicles * dialog->parameters.motorcycles_perc / 100;
 
-	for(int i=0; i<dialog->parameters.vehicles_number; i++ )
+	for(int i=0; i<n_vehicles; i++ )
 	{
 		QGraphicsPixmapItem *pixmap = new QGraphicsPixmapItem();
 
@@ -206,6 +210,14 @@ void HighwayGui::moveVehicle(int vehicle_id, int lane, int x_pos, int y_pos, boo
 	{
 		//The vehicle should be removed from the scene
 		scene->removeItem(vehicles[vehicle_id]);
+		arrived++;
+
+		//If all vehicles arrived, I can close the view
+		if(arrived == n_vehicles)
+		{
+			//Comment it, for better debugging...
+			this->close();
+		}
 	}
 	else
 	{

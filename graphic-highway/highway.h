@@ -60,6 +60,8 @@ struct highway_t
 	//frequency of lateral movement inside the lane
 	bool rare_frequency;
 
+	bool only_one_left;
+
 };
 
 void initStandardHighway(struct highway_t *h);

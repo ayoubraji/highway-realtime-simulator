@@ -12,5 +12,6 @@ void initStandardThreads();
 void initCustomThreads(highway_parameters_t parameters);
 void initGuiThread();
 void initVehiclesThreads();
+void findNextVehicle(int vehicle_id, struct highway_t *h);
 
 #endif // THREADS_CONTROLLER_H
